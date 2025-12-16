@@ -1,3 +1,15 @@
+
+#CW2 Specific Gitignore
+
+#ignore data files
+cw2-pt/data/*
+
+!cw2-pt/data/README.md
+
+
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
