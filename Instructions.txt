@@ -1,14 +1,15 @@
 1. Split data into training, validation and test set. Do this by writing the following command line function:
 
-   python data_proccessing.py --data_dir <path to data directory> --output_dir <path to output directory>
+   python split_files.py --data_dir <path to data directory> --output_dir <path to output directory>
 
    If you want custom trian/test/val splits, use the following command line function as an example:
 
-   python data_proccessing.py --data_dir <path to data directory> --output_dir <path to output directory> \\
+   python split_files.py --data_dir <path to data directory> --output_dir <path to output directory> \\
    --train_ratio <chosen train ratio> --val_ratio <chosen validation ratio> --test_ratio <chosen test ratio>
 
    If you want to change the random seed value, use the following command line function as an example:
 
-   python data_proccessing.py --data_dir <path to data directory> --output_dir <path to output directory> \\
+   python split_files.py --data_dir <path to data directory> --output_dir <path to output directory> \\
    --random_seed <chosen random seed number>
-   
+
+2. 

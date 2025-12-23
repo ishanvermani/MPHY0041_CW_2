@@ -11,7 +11,6 @@ def split_nifti_files(data_dir: str,
                       test_ratio: float = 0.1,
                       random_seed: int = 42) -> dict[str, list[tuple[str, str]]]:
     '''
-    Split NIfTI image-mask pairs into training, validation, and testing sets.
     
     This function finds all *_img.nii files and their corresponding *_mask.nii files,
     shuffles them randomly, and splits them into train/validation/test sets according
@@ -19,8 +18,8 @@ def split_nifti_files(data_dir: str,
     
     Args:
         data_dir: Path to directory containing *_img.nii and *_mask.nii files
-        output_dir: Path to output directory. If None, files are not moved/copied.
-                    If provided, creates organized directory structure:
+        output_dir: Path to output directory. If None, files are not copied.
+                    If provided, creates organised directory structure:
                     output_dir/
                       train/
                         images/
@@ -114,6 +113,7 @@ def split_nifti_files(data_dir: str,
     return splits
 
 
+
 def main():
     '''Command-line interface for splitting NIfTI files.'''
     parser = argparse.ArgumentParser(
@@ -192,8 +192,6 @@ def main():
     print(f'  Splits available: {list(splits.keys())}')
     
     return splits
-
-
 
 if __name__ == '__main__':
     main()
