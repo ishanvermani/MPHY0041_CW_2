@@ -13,7 +13,7 @@ class MalePelvicDataset(Dataset):
         self.mask_dir = self.data_dir / "masks"
 
         self.image_files = sorted(
-            [p for p in self.image_dir.iterdir() if p.name.endswith(".nii") or p.name.endswith(".nii.gz")]
+            [p for p in self.image_dir.iterdir() if p.name.endswith(".nii") or p.endswith(".nii.gz")]
         )
 
         # No need to normalize because done already in preprocess.py
@@ -31,8 +31,8 @@ class MalePelvicDataset(Dataset):
         image_nib = nib.load(str(image_path)).get_fdata(dtype=np.float32)
         mask_nib = nib.load(str(mask_path)).get_fdata(dtype=np.float32)
 
-        mask = np.rint(mask_nib).astype(np.int64)
-        mask = np.clip(mask_nib,0, 8)
+        mask_nib = np.rint(mask_nib).astype(np.int64)
+        mask_nib = np.clip(mask_nib,0, 8)
 
         image_zyx = np.transpose(image_nib, (2, 1, 0))
         mask_zyx = np.transpose(mask_nib, (2, 1, 0))
