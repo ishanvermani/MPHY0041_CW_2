@@ -13,7 +13,7 @@ class MalePelvicDataset(Dataset):
         self.mask_dir = self.data_dir / "masks"
 
         self.image_files = sorted(
-            [p for p in self.image_dir.iterdir() if p.endswith(".nii") or p.endswith(".nii.gz")]
+            [p for p in self.image_dir.iterdir() if p.name.endswith(".nii") or p.name.endswith(".nii.gz")]
         )
 
         # No need to normalize because done already in preprocess.py
