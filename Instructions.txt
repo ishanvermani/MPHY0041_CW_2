@@ -12,4 +12,24 @@
    python split_files.py --data_dir <path to data directory> --output_dir <path to output directory> \\
    --random_seed <chosen random seed number>
 
-2. 
+2. Preprocess the data set using the following command line function:
+
+   python preprocess.py --input_dir <path to split data> --output_dir <path to preprocessed data>
+
+   Once this is done you can delete the split dataset 
+
+3. For training, use the classes in dataset.py as such:
+
+   from dataset import MalePelvicDataset, PatchDataset
+
+   train_vols = MalePelvicDataset("data/preprocessed_data/train")
+
+   train_ds = PatchDataset(
+      train_vols,
+      patch_size=(16, 192, 192),
+      foreground_prob=0.8,
+      samples_per_volume=8,
+   )
+
+
+
