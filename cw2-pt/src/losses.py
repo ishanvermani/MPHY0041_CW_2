@@ -1,0 +1,72 @@
+import torch
+import torch.nn.functional as F
+
+
+
+
+def build_distance_matrix(num_classes: int, device: torch.device)-> torch.Tensor:
+    """
+    Builds and returns a [C,C] matrix D where D[true, pred] is the penalty weight
+    we use the number of classes to structure the matrix and define its dimensions.
+    row index corresponds to the true class, column index to the predicted class.
+    the values in the cells represent the penalty based on the distance between classes.
+
+    the matrix represents the anatomy knowledge of the organs turned into numbers
+    """
+
+
+    D = torch.tensor([
+        [0, 1, 1, 1, 1, 3],  # true: background
+        [1, 0, 1, 2, 2, 3],  # true: prostate
+        [1, 1, 0, 2, 2, 3],  # true: seminal vesicles
+        [1, 2, 2, 0, 1, 3],  # true: bladder
+        [1, 2, 2, 1, 0, 3],  # true: rectum
+        [3, 3, 3, 3, 3, 0],  # true: bone
+    ], device=device, dtype=torch.float32)
+
+    if D.shape != (num_classes, num_classes):
+        raise ValueError(f"Distance matrix shape {D.shape} does not match num_classes {num_classes}")
+    
+    return D
+
+
+# perform MLE for our segmentation model baselinelearnign objective
+# standard cross entropy loss implementation
+# we have as input the outputs C of the model, (unormalized scores) for each pixel
+def ce_loss(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+    """
+    Computes the standard cross-entropy loss between logits and targets.
+
+    Args:
+        logits (torch.Tensor): The unnormalized scores from the model of shape [B, C, H, W].
+        targets (torch.Tensor): The ground truth labels of shape [B, H, W].
+
+    Returns:
+        torch.Tensor: The computed cross-entropy loss. 
+        if the model predicts the correct class with high confidence, the loss is low.
+        otherwise the loss is high.
+    """
+    return F.cross_entropy(logits, targets)
+
+# performs MLE with anatomy-aware penalties
+# D represents the hierarchy distance matrix/ penalty weight
+def hierarchical_ce_loss(
+        logits: torch.Tensor,
+        targets: torch.Tensor,
+        D: torch.Tensor,
+        epsilon: float = 1e-8
+    ) -> torch.Tensor:
+
+    """computees the hierarchical cross-entropy loss between logits and targets using distance matrix D."""
+    # cross entropy loss per pixel wihtput avearaging
+    ce = F.cross_entropy(logits, targets, reduction='none')  
+
+    # predict class probabilities per pixel given the logits
+    preds = logits.argmax(dim=1)
+
+    # fidn the penalty weights based on true and predicted classes
+    penalties = D[targets, preds]
+    # weight the cross entropy loss with the penalties
+    weighted_ce = ce * penalties
+
+    return weighted_ce.mean()
