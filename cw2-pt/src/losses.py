@@ -67,6 +67,11 @@ def hierarchical_ce_loss(
     # fidn the penalty weights based on true and predicted classes
     penalties = D[targets, preds]
     # weight the cross entropy loss with the penalties
-    weighted_ce = ce * penalties
+
+
+    #If the penalty is 0, the model would receive zero gradient (100% probability) 
+    #The model would be prevented from increasing its confidence on correct pixels
+    #I changed the logic 
+    weighted_ce = ce * (1 + penalties)
 
     return weighted_ce.mean()
