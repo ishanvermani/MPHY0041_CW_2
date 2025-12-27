@@ -32,7 +32,10 @@ class MalePelvicDataset(Dataset):
         mask_nib = nib.load(str(mask_path)).get_fdata(dtype=np.float32)
 
         mask_nib = np.rint(mask_nib).astype(np.int64)
-        mask_nib = np.clip(mask_nib,0, 8)
+
+        #the distance matrix is 6*6
+        #I changed clip range from 0-8 to 0-5
+        mask_nib = np.clip(mask_nib,0, 5)
 
         image_zyx = np.transpose(image_nib, (2, 1, 0))
         mask_zyx = np.transpose(mask_nib, (2, 1, 0))
