@@ -1,4 +1,6 @@
 """
+
+The trainig command I used: python train.py --data_dir data/processed --epochs 20 --batch_size 1 --num_classes 6 --use_hierarchical_loss --num_workers 4 --samples_per_volume 8
 Training script for 2D U-Net pelvic segmentation (patch-based from 3D volumes).
 
 Quick start (CPU / CUDA )：
