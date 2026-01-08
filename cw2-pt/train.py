@@ -23,6 +23,8 @@ Key args:
 """
 
 import argparse
+import csv
+import json
 import time
 from pathlib import Path
 
@@ -161,10 +163,16 @@ def main():
     parser.add_argument("--patch_z", type=int, default=16)
     parser.add_argument("--patch_y", type=int, default=192)
     parser.add_argument("--patch_x", type=int, default=192)
+    parser.add_argument("--metrics_path", type=str, default=None,
+                        help="Optional path prefix for saving per-epoch metrics (default: data_dir/metrics.json & .csv)")
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data_root = Path(args.data_dir)
+
+    metrics_base = Path(args.metrics_path) if args.metrics_path else data_root / "metrics"
+    metrics_json = metrics_base.with_suffix(".json")
+    metrics_csv = metrics_base.with_suffix(".csv")
 
     patch_size = (args.patch_z, args.patch_y, args.patch_x)
     train_loader, val_loader = make_dataloaders(
@@ -199,6 +207,20 @@ def main():
 
     print(f"Starting training for {args.epochs} epochs on {device}…")
     best_val = float("inf")
+    metrics = []
+
+    def save_metrics():
+        metrics_json.parent.mkdir(parents=True, exist_ok=True)
+        with open(metrics_json, "w") as f:
+            json.dump(metrics, f, indent=2)
+        # Also save CSV for quick loading elsewhere
+        with open(metrics_csv, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=["epoch", "train_loss", "train_acc", "train_dice", "val_loss", "val_acc", "val_dice"])
+            writer.writeheader()
+            for row in metrics:
+                writer.writerow(row)
+        return metrics_json, metrics_csv
+
     try:
         for epoch in range(1, args.epochs + 1):
             t0 = time.time()
@@ -211,6 +233,18 @@ def main():
             print(f"Epoch {epoch:03d} | {dt:5.1f}s | "
                   f"train loss {train_loss:.4f} acc {train_acc:.4f} dice {train_dice:.4f} | "
                   f"val loss {val_loss:.4f} acc {val_acc:.4f} dice {val_dice:.4f}")
+
+            metrics.append({
+                "epoch": epoch,
+                "train_loss": train_loss,
+                "train_acc": train_acc,
+                "train_dice": train_dice,
+                "val_loss": val_loss,
+                "val_acc": val_acc,
+                "val_dice": val_dice,
+            })
+            mj, mc = save_metrics()
+            print(f"   Logged metrics to {mj} and {mc}")
 
             if val_loss < best_val:
                 best_val = val_loss
