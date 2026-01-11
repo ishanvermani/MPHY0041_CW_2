@@ -1,13 +1,15 @@
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
-#$ -N flat_unet_10ep
+#$ -N hierarchy_unet_50ep
 #$ -o logs/$JOB_NAME.$JOB_ID.out
 #$ -e logs/$JOB_NAME.$JOB_ID.err
 #$ -l h_rt=07:00:00
 #$ -l mem=16G
 #$ -pe smp 4
 #$ -l gpu=1
+#$ -M rmapcag@ucl.ac.uk
+#$ -m abe
 
 set -euo pipefail
 
