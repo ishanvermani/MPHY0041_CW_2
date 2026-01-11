@@ -14,7 +14,7 @@ def build_distance_matrix(num_classes: int, device: torch.device)-> torch.Tensor
     the matrix represents the anatomy knowledge of the organs turned into numbers
     """
 
-
+    """"
     D = torch.tensor([
         [0, 1, 1, 1, 1, 3],  # true: background
         [1, 0, 1, 2, 2, 3],  # true: prostate
@@ -22,6 +22,20 @@ def build_distance_matrix(num_classes: int, device: torch.device)-> torch.Tensor
         [1, 2, 2, 0, 1, 3],  # true: bladder
         [1, 2, 2, 1, 0, 3],  # true: rectum
         [3, 3, 3, 3, 3, 0],  # true: bone
+    ], device=device, dtype=torch.float32)
+    """
+
+    # Extended D matrix for 9 classes (rows=true, cols=pred)
+    D = torch.tensor([
+        [0, 1, 1, 1, 1, 1, 1, 1, 3],  # background
+        [1, 0, 0, 0, 1, 1, 1, 2, 3],  # prostate 1
+        [1, 0, 0, 0, 1, 1, 1, 2, 3],  # prostate 2
+        [1, 0, 0, 0, 1, 1, 1, 2, 3],  # prostate 3
+        [1, 1, 1, 1, 0, 0, 1, 2, 3],  # muscle
+        [1, 1, 1, 1, 1, 0, 1, 2, 3],  # seminal vesicles
+        [1, 2, 2, 2, 1, 1, 0, 1, 3],  # bladder
+        [1, 2, 2, 2, 1, 1, 1, 0, 3],  # rectum
+        [3, 3, 3, 3, 3, 3, 3, 3, 0],  # bone
     ], device=device, dtype=torch.float32)
 
     if D.shape != (num_classes, num_classes):
