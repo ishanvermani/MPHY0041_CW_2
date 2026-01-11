@@ -92,11 +92,9 @@ def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes):
 
 	for images, masks in loader:
 		images, masks = images.to(device), masks.to(device)
-		print("Before reshape:", images.shape)
 		images, masks = reshape_to_2d(images, masks)
 
 		optimizer.zero_grad()
-		print("Before logits:", images.shape)
 		logits = model(images)
 		loss = loss_fn(logits, masks)
 		loss.backward()
