@@ -12,15 +12,15 @@ from scipy.ndimage import binary_erosion, distance_transform_edt
 
 
 def merge_prostate_superclass(preds: torch.Tensor, targets: torch.Tensor):
-	"""Return merged copies where prostate sub-classes 1/2/3 are mapped to 1.
+	"""Return merged copies where prostate sub-classes 1/2 (index 4, 5) are mapped to 4.
 
-	Background stays 0; other classes (>=4) remain unchanged. Shapes preserved.
+	Background stays 0; other classes remain unchanged. Shapes preserved.
 	"""
 	merged = preds.clone()
 	merged_tgt = targets.clone()
-	for c in (2, 3):
-		merged[merged == c] = 1
-		merged_tgt[merged_tgt == c] = 1
+	
+	merged[merged == 5] = 4
+	merged_tgt[merged_tgt == 5] = 4
 	return merged, merged_tgt
 
 
@@ -130,17 +130,17 @@ def binary_auc(scores: torch.Tensor, labels: torch.Tensor) -> float:
 def prostate_superclass_metrics(logits: torch.Tensor, targets: torch.Tensor, num_classes: int):
 	"""Compute merged-prostate Dice and AUC (prostate vs rest) without altering base preds.
 
-	- Dice uses argmax preds merged (1/2/3 -> 1) and class-1 Dice.
-	- AUC uses softmax probs; positive when target in {1,2,3}.
+	- Dice uses argmax preds merged (4/5 -> 4) and class-1 Dice.
+	- AUC uses softmax probs; positive when target in {4, 5}.
 	"""
 	with torch.no_grad():
 		preds = logits.argmax(dim=1)
 		merged_pred, merged_tgt = merge_prostate_superclass(preds, targets)
-		prostate_dice = binary_dice(merged_pred == 1, merged_tgt == 1)
+		prostate_dice = binary_dice(merged_pred == 4, merged_tgt == 4)
 
 		probs = torch.softmax(logits, dim=1)
-		prostate_score = probs[:, [1, 2, 3]].sum(dim=1)
-		labels = (targets == 1) | (targets == 2) | (targets == 3)
+		prostate_score = probs[:, [4, 5]].sum(dim=1)
+		labels = (targets == 4) | (targets == 5)
 		prostate_auc = binary_auc(prostate_score.flatten(), labels.flatten())
 	return prostate_dice, prostate_auc
 
