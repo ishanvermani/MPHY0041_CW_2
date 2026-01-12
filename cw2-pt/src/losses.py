@@ -1,7 +1,6 @@
 import torch
 import torch.nn.functional as F
-
-
+from sklearn.metrics import confusion_matrix
 
 
 def build_distance_matrix(num_classes: int, device: torch.device)-> torch.Tensor:
@@ -73,8 +72,7 @@ def ce_loss(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     """
     return F.cross_entropy(logits, targets)
 
-# performs MLE with anatomy-aware penalties
-# D represents the hierarchy distance matrix/ penalty weight
+# USED AI FOR THIS FUNCTION
 def hierarchical_ce_loss(
         logits: torch.Tensor,
         targets: torch.Tensor,
@@ -82,19 +80,69 @@ def hierarchical_ce_loss(
         epsilon: float = 1e-8
     ) -> torch.Tensor:
 
-    """computees the hierarchical cross-entropy loss between logits and targets using distance matrix D."""
-    # cross entropy loss per pixel wihtput avearaging
-    ce = F.cross_entropy(logits, targets, reduction='none')  
-    print(ce)
 
-    # predict class probabilities per pixel given the logits
-    preds = logits.argmax(dim=1)
+    B, C, H, W = logits.shape
+    assert D.shape == (C, C)
 
-    # fidn the penalty weights based on true and predicted classes
-    penalties = D[targets, preds]
-    # weight the cross entropy loss with the penalties
-    weighted_ce = ce * (1 + penalties)
+    # per-pixel CE
+    ce = F.cross_entropy(logits, targets, reduction="none")  # [B, H, W]
 
-    print(weighted_ce / ce)
+    # predicted probabilities (differentiable)
+    probs = F.softmax(logits, dim=1)  # [B, C, H, W]
 
-    return weighted_ce.mean()
+    # row of D for each true label: D_true[b,h,w,:] = D[targets[b,h,w], :]
+    D_true = D[targets]  # [B, H, W, C]
+
+    # expected penalty under predicted distribution
+    expected_penalty = (D_true * probs.permute(0, 2, 3, 1)).sum(dim=-1)  # [B, H, W]
+
+    # weight CE
+    weighted = ce * (1.0 + expected_penalty)
+    
+    return weighted.mean()
+
+# # performs MLE with anatomy-aware penalties
+# # D represents the hierarchy distance matrix/ penalty weight
+# def hierarchical_ce_loss(
+#         logits: torch.Tensor,
+#         targets: torch.Tensor,
+#         D: torch.Tensor,
+#         epsilon: float = 1e-8
+#     ) -> torch.Tensor:
+
+#     """computees the hierarchical cross-entropy loss between logits and targets using distance matrix D."""
+#     # cross entropy loss per pixel wihtput avearaging
+#     ce = F.cross_entropy(logits, targets, reduction='none')  
+#     # print("ce matrix: ", ce)
+#     print("ce shape: ", ce.size()) 
+
+#     # ce shape:  torch.Size([16, 192, 192])
+#     # logits:  torch.Size([16, 9, 192, 192])
+#     # targets:  torch.Size([16, 192, 192])
+#     # penalties shape:  torch.Size([16, 192, 192])
+
+#     # predict class probabilities per pixel given the logits
+#     preds = logits.argmax(dim=1)
+#     print("logits: ", logits.shape)
+
+#     # find the penalty weights based on true and predicted classes
+#     penalties = D[targets, preds]
+
+#     num_classes = D.shape[0]
+#     y_true = targets.view(-1).long()
+#     y_pred = preds.view(-1).long()
+
+#     k = y_true * num_classes + y_pred
+#     cm = torch.bincount(k, minlength=num_classes**2).reshape(num_classes, num_classes)
+
+#     print("cm :", cm, "cm shape: ", cm.shape)
+
+#     print("targets: ", targets.shape)
+
+#     print("penalties shape: ", penalties.shape)
+#     # weight the cross entropy loss with the penalties
+#     weighted_ce = ce * (1 + penalties)
+
+#     # print("ratio: ", weighted_ce / ce)
+
+#     return weighted_ce.mean()
