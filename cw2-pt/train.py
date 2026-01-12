@@ -78,7 +78,7 @@ def reshape_to_2d(images, masks):
 def dice_score(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps: float = 1e-6) -> float:
 	"""Compute mean Dice across classes present in targets."""
 	dice_sum, count = 0.0, 0
-	for c in range(num_classes):
+	for c in range(num_classes): # Ignore background when calculating dice score 
 		pred_c = (preds == c)
 		tgt_c = (targets == c)
 		denom = pred_c.sum() + tgt_c.sum()
@@ -91,8 +91,6 @@ def dice_score(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps
 	if count == 0:
 		return 0.0
 	return (dice_sum / count).item()
-
-
 
 
 def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=None):

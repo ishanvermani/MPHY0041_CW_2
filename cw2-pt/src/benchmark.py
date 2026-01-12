@@ -78,11 +78,19 @@ def hd95_per_class(preds: torch.Tensor, targets: torch.Tensor, num_classes: int,
 	p_np = preds.detach().cpu().numpy()
 	t_np = targets.detach().cpu().numpy()
 	for c in range(num_classes):
-		pred_c = (p_np == c)
-		tgt_c = (t_np == c)
-		res.append(hd95_single(pred_c, tgt_c, spacing=spacing))
+		vals = []
+		for i in range(p_np.shape[0]):
+			pred_c = (p_np[i] == c)
+			tgt_c = (t_np[i] == c)
+			v = hd95_single(pred_c, tgt_c, spacing=spacing)
+			if np.isfinite(v):
+				vals.append(v)
+		
+		if len(vals) == 0:
+			res.append(float("nan"))
+		else:
+			res.append(float(np.median(vals)))
 	return res
-
 
 def hierarchy_confusion_fast(preds: torch.Tensor, targets: torch.Tensor, D: torch.Tensor):
 	"""Weighted confusion accumulation using distance matrix D (rows=true, cols=pred)."""

@@ -26,23 +26,34 @@ def build_distance_matrix(num_classes: int, device: torch.device)-> torch.Tensor
     """
 
     # Extended D matrix for 9 classes (rows=true, cols=pred)
+    # D = torch.tensor([
+    #     [0, 1, 1, 1, 1, 1, 1, 1, 3],  # background
+    #     [1, 0, 0, 0, 1, 1, 1, 2, 3],  # prostate 1
+    #     [1, 0, 0, 0, 1, 1, 1, 2, 3],  # prostate 2
+    #     [1, 0, 0, 0, 1, 1, 1, 2, 3],  # prostate 3
+    #     [1, 1, 1, 1, 0, 0, 1, 2, 3],  # muscle
+    #     [1, 1, 1, 1, 1, 0, 1, 2, 3],  # seminal vesicles
+    #     [1, 2, 2, 2, 1, 1, 0, 1, 3],  # bladder
+    #     [1, 2, 2, 2, 1, 1, 1, 0, 3],  # rectum
+    #     [3, 3, 3, 3, 3, 3, 3, 3, 0],  # bone
+    # ], device=device, dtype=torch.float32)
+    
     D = torch.tensor([
-        [0, 1, 1, 1, 1, 1, 1, 1, 3],  # background
-        [1, 0, 0, 0, 1, 1, 1, 2, 3],  # prostate 1
-        [1, 0, 0, 0, 1, 1, 1, 2, 3],  # prostate 2
-        [1, 0, 0, 0, 1, 1, 1, 2, 3],  # prostate 3
-        [1, 1, 1, 1, 0, 0, 1, 2, 3],  # muscle
-        [1, 1, 1, 1, 1, 0, 1, 2, 3],  # seminal vesicles
-        [1, 2, 2, 2, 1, 1, 0, 1, 3],  # bladder
-        [1, 2, 2, 2, 1, 1, 1, 0, 3],  # rectum
-        [3, 3, 3, 3, 3, 3, 3, 3, 0],  # bone
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],  # background
+        [0, 0, 3, 1, 2, 2, 2, 1, 1],  # Bladder
+        [0, 3, 0, 3, 3, 3, 3, 3, 3],  # Bone 
+        [0, 1, 3, 0, 1, 1, 2, 1, 1],  # Obturator Internus
+        [0, 2, 3, 1, 0, 0, 2, 1, 1],  # Transition (pros 1)
+        [0, 2, 3, 1, 0, 0, 2, 1, 1],  # Central Gland (Pros 2)
+        [0, 2, 3, 2, 2, 2, 0, 1, 1],  # Rectum
+        [0, 1, 3, 1, 1, 1, 1, 0, 1],  # Seminal Vesicle
+        [0, 1, 3, 1, 1, 1, 1, 1, 0],  # Neurovascular Bundle
     ], device=device, dtype=torch.float32)
 
     if D.shape != (num_classes, num_classes):
         raise ValueError(f"Distance matrix shape {D.shape} does not match num_classes {num_classes}")
     
     return D
-
 
 # perform MLE for our segmentation model baselinelearnign objective
 # standard cross entropy loss implementation
@@ -74,6 +85,7 @@ def hierarchical_ce_loss(
     """computees the hierarchical cross-entropy loss between logits and targets using distance matrix D."""
     # cross entropy loss per pixel wihtput avearaging
     ce = F.cross_entropy(logits, targets, reduction='none')  
+    print(ce)
 
     # predict class probabilities per pixel given the logits
     preds = logits.argmax(dim=1)
@@ -81,6 +93,8 @@ def hierarchical_ce_loss(
     # fidn the penalty weights based on true and predicted classes
     penalties = D[targets, preds]
     # weight the cross entropy loss with the penalties
-    weighted_ce = ce * penalties
+    weighted_ce = ce * (1 + penalties)
+
+    print(weighted_ce / ce)
 
     return weighted_ce.mean()
