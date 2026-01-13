@@ -1,7 +1,7 @@
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
-#$ -N flat_unet_10ep
+#$ -N flat_unet_50ep
 #$ -o logs/$JOB_NAME.$JOB_ID.out
 #$ -e logs/$JOB_NAME.$JOB_ID.err
 #$ -l h_rt=07:00:00
