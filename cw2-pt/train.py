@@ -365,6 +365,5 @@ def main():
 	except KeyboardInterrupt:
 		print("\nKeyboardInterrupt received. Exiting training loop.")
 
-
 if __name__ == "__main__":
 	main()

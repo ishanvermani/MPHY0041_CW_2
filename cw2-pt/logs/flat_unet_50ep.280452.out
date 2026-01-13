@@ -59,3 +59,28 @@ Epoch 026 | 177.8s | train loss 0.0870 dice 0.8357 | val loss 0.1672 dice 0.7347
    Logged metrics to metrics.json and metrics.csv
 Epoch 027 | 177.8s | train loss 0.0861 dice 0.8393 | val loss 0.1654 dice 0.7348
    Logged metrics to metrics.json and metrics.csv
+Epoch 028 | 177.6s | train loss 0.0830 dice 0.8417 | val loss 0.1785 dice 0.7345
+   Logged metrics to metrics.json and metrics.csv
+Epoch 029 | 182.1s | train loss 0.0855 dice 0.8423 | val loss 0.1804 dice 0.7376
+   Logged metrics to metrics.json and metrics.csv
+Epoch 030 | 181.5s | train loss 0.0823 dice 0.8439 | val loss 0.1697 dice 0.7293
+   Logged metrics to metrics.json and metrics.csv
+Epoch 031 | 179.1s | train loss 0.0828 dice 0.8450 | val loss 0.1799 dice 0.7382
+   Logged metrics to metrics.json and metrics.csv
+Epoch 032 | 177.7s | train loss 0.0813 dice 0.8457 | val loss 0.1846 dice 0.7396
+   Logged metrics to metrics.json and metrics.csv
+Epoch 033 | 177.9s | train loss 0.0794 dice 0.8506 | val loss 0.1831 dice 0.7272
+   Logged metrics to metrics.json and metrics.csv
+Epoch 034 | 177.7s | train loss 0.0785 dice 0.8528 | val loss 0.1844 dice 0.7347
+   Logged metrics to metrics.json and metrics.csv
+Epoch 035 | 179.0s | train loss 0.0798 dice 0.8505 | val loss 0.1764 dice 0.7321
+   Logged metrics to metrics.json and metrics.csv
+Epoch 036 | 178.2s | train loss 0.0796 dice 0.8496 | val loss 0.2036 dice 0.7189
+   Logged metrics to metrics.json and metrics.csv
+Epoch 037 | 178.3s | train loss 0.0778 dice 0.8530 | val loss 0.2012 dice 0.7195
+   Logged metrics to metrics.json and metrics.csv
+Epoch 038 | 181.6s | train loss 0.0762 dice 0.8549 | val loss 0.1961 dice 0.7489
+   Logged metrics to metrics.json and metrics.csv
+	   Saved checkpoint (best overall Dice) to data/preprocessed_data/best_model_dice.pt
+Epoch 039 | 179.4s | train loss 0.0760 dice 0.8562 | val loss 0.1756 dice 0.7338
+   Logged metrics to metrics.json and metrics.csv
