@@ -104,8 +104,8 @@ def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=No
 	# conf_H = torch.zeros((num_classes, num_classes), device=device)
 	# per_class_dice_vals = None
 	# per_class_hd95_vals = None
-	# super_dice_sum, super_dice_count = 0.0, 0
-	# super_auc_sum, super_auc_count = 0.0, 0
+	super_dice_sum, super_dice_count = 0.0, 0
+	super_auc_sum, super_auc_count = 0.0, 0
 
 	for images, masks in loader:
 		images, masks = images.to(device), masks.to(device)
@@ -131,12 +131,12 @@ def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=No
 		# per_class_dice_vals = per_class_dice(preds, masks, num_classes)
 		# per_class_hd95_vals = hd95_per_class(preds, masks, num_classes)
 
-		# super_dice, super_auc = prostate_superclass_metrics(logits.detach(), masks, num_classes)
-		# super_dice_sum += super_dice
-		# super_dice_count += 1
-		# if np.isfinite(super_auc):
-		# 	super_auc_sum += super_auc
-		# 	super_auc_count += 1
+		super_dice, super_auc = prostate_superclass_metrics(logits.detach(), masks, num_classes)
+		super_dice_sum += super_dice
+		super_dice_count += 1
+		if np.isfinite(super_auc):
+			super_auc_sum += super_auc
+			super_auc_count += 1
 
 	avg_loss = total_loss / max(1, total_px)
 	mean_dice = total_dice / max(1, dice_count)

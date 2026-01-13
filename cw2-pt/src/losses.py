@@ -1,7 +1,5 @@
 import torch
 import torch.nn.functional as F
-from sklearn.metrics import confusion_matrix
-
 
 def build_distance_matrix(num_classes: int, device: torch.device)-> torch.Tensor:
     """
