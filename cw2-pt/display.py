@@ -30,6 +30,8 @@ import matplotlib.pyplot as plt
 
 from src.model import UNet
 
+import torch.nn.functional as F
+
 
 def load_img_as_zyx(image_nii_path: str):
     """
@@ -54,14 +56,16 @@ def load_mask_as_zyx(mask_nii_path: str):
     mask_zyx = np.transpose(mask_xyz, (2, 1, 0))
     return mask_nib, mask_zyx
 
+def pad_to_multiple(x, multiple=16):
+    _, _, h, w = x.shape
+    pad_h = (multiple - h % multiple) % multiple
+    pad_w = (multiple - w % multiple) % multiple
+    # pad on right/bottom
+    x_pad = F.pad(x, (0, pad_w, 0, pad_h), mode="replicate")
+    return x_pad, (h, w)
 
 @torch.no_grad()
-def predict_volume_zyx(model, img_zyx: np.ndarray, device: torch.device, batch_slices: int = 8):
-    """
-    Runs a 2D model slice-wise over Z.
-    img_zyx: [Z,Y,X] float32
-    returns: pred_zyx [Z,Y,X] uint8
-    """
+def predict_volume_zyx(model, img_zyx, device, batch_slices=8, multiple=16):
     model.eval()
     Z, Y, X = img_zyx.shape
     pred_zyx = np.zeros((Z, Y, X), dtype=np.uint8)
@@ -69,10 +73,13 @@ def predict_volume_zyx(model, img_zyx: np.ndarray, device: torch.device, batch_s
     z = 0
     while z < Z:
         z2 = min(Z, z + batch_slices)
-        # [N,1,H,W] where H=Y, W=X
         x = torch.from_numpy(img_zyx[z:z2]).unsqueeze(1).to(device)  # [N,1,Y,X]
-        logits = model(x)  # [N,C,Y,X]
-        preds = torch.argmax(logits, dim=1).cpu().numpy().astype(np.uint8)  # [N,Y,X]
+
+        x_pad, (orig_h, orig_w) = pad_to_multiple(x, multiple=multiple)
+        logits = model(x_pad)  # [N,C,Hpad,Wpad]
+        logits = logits[:, :, :orig_h, :orig_w]  # unpad back
+
+        preds = torch.argmax(logits, dim=1).cpu().numpy().astype(np.uint8)
         pred_zyx[z:z2] = preds
         z = z2
 
@@ -124,7 +131,6 @@ def overlay_pngs(img_zyx, pred_flat_zyx, pred_hier_zyx, gt_zyx, out_dir: Path, s
             axes[3].set_title("Ground truth")
             axes[3].axis("off")
 
-        fig.tight_layout()
         fig.savefig(out_dir / f"overlay_z{z:03d}.png", dpi=150)
         plt.close(fig)
 
@@ -150,7 +156,7 @@ def parse_slices(spec: str, Z: int):
 
 def load_checkpoint(model, ckpt_path: str, device: torch.device):
     ckpt = torch.load(ckpt_path, map_location=device)
-    state = ckpt.get("model_state", ckpt)  # supports either {"model_state": ...} or raw state_dict
+    state = ckpt.get("model_state", ckpt)
     model.load_state_dict(state)
     model.to(device)
     model.eval()
@@ -159,15 +165,15 @@ def load_checkpoint(model, ckpt_path: str, device: torch.device):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--image_nii", required=True, help="Path to PREPROCESSED image .nii/.nii.gz")
-    ap.add_argument("--flat_ckpt", required=True, help="Flat model checkpoint (.pt)")
-    ap.add_argument("--hier_ckpt", required=True, help="Hier model checkpoint (.pt)")
+    ap.add_argument("--image_nii", required=True)
+    ap.add_argument("--flat_ckpt", required=True)
+    ap.add_argument("--hier_ckpt", required=True)
     ap.add_argument("--num_classes", type=int, default=9)
 
-    ap.add_argument("--mask_nii", default=None, help="Optional PREPROCESSED GT mask .nii/.nii.gz")
-    ap.add_argument("--out_dir", default="pred_vis", help="Output directory")
+    ap.add_argument("--mask_nii", default=None)
+    ap.add_argument("--out_dir", default="prediction_masks", help="Output directory")
     ap.add_argument("--batch_slices", type=int, default=8)
-    ap.add_argument("--slices", default="mid", help='e.g. "mid", "all", "10,20,30", "10:60:5"')
+    ap.add_argument("--slices", default="mid")
     ap.add_argument("--alpha", type=float, default=0.45)
 
     args = ap.parse_args()
@@ -178,15 +184,11 @@ def main():
 
     # Load preprocessed image the same way as dataset.py (XYZ -> ZYX)
     img_nib, img_zyx = load_img_as_zyx(args.image_nii)
-    if img_zyx.ndim != 3:
-        raise ValueError(f"Expected 3D image after transpose, got {img_zyx.shape}")
 
     # Load GT if provided (also XYZ -> ZYX, clip 0..8)
     gt_zyx = None
     if args.mask_nii is not None:
         _, gt_zyx = load_mask_as_zyx(args.mask_nii)
-        if gt_zyx.shape != img_zyx.shape:
-            raise ValueError(f"GT shape {gt_zyx.shape} does not match image shape {img_zyx.shape}")
 
     # Models
     flat_model = load_checkpoint(UNet(in_channels=1, num_classes=args.num_classes), args.flat_ckpt, device)

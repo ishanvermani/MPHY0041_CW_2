@@ -100,7 +100,6 @@ def mean_hier_cost_argmax(preds: torch.Tensor, targets: torch.Tensor, D: torch.T
     """
     return D[targets, preds].float().mean().item()
 
-
 @torch.no_grad()
 def expected_hier_cost_from_logits(logits: torch.Tensor, targets: torch.Tensor, D: torch.Tensor) -> float:
     """
