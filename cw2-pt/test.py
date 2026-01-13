@@ -74,6 +74,22 @@ def mean_foreground_dice(preds: torch.Tensor, targets: torch.Tensor, num_classes
         count += 1
     return (dice_sum / count).item() if count > 0 else 0.0
 
+def binary_dice(pred_bin: torch.Tensor, tgt_bin: torch.Tensor, eps: float = 1e-6) -> float:
+    inter = (pred_bin & tgt_bin).sum()
+    denom = pred_bin.sum() + tgt_bin.sum()
+    if denom == 0:
+        return 1.0  # both empty
+    return ((2.0 * inter.float() + eps) / (denom.float() + eps)).item()
+
+
+def prostate_superclass_dice(preds: torch.Tensor, targets: torch.Tensor, prostate_ids=(4, 5)) -> float:
+    pred_p = torch.zeros_like(preds, dtype=torch.bool)
+    tgt_p  = torch.zeros_like(targets, dtype=torch.bool)
+    for pid in prostate_ids:
+        pred_p |= (preds == pid)
+        tgt_p  |= (targets == pid)
+    return binary_dice(pred_p, tgt_p)
+
 
 @torch.no_grad()
 def mean_hier_cost_argmax(preds: torch.Tensor, targets: torch.Tensor, D: torch.Tensor) -> float:
@@ -153,6 +169,8 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
     per_class_dice_accum = [[] for _ in range(num_classes)]
     hcost_argmax_list = []
     hcost_expected_list = []
+    prostate_dice_list = []
+
 
     for batch in test_loader:
         # MalePelvicDataset returns (image, mask) where:
@@ -166,6 +184,8 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
         # Dice
         fg_d = mean_foreground_dice(preds, mask, num_classes)
         pc = dice_per_class(preds, mask, num_classes)
+        pros_d = prostate_superclass_dice(preds, mask, prostate_ids=(4,5))
+        prostate_dice_list.append(pros_d)
 
         mean_fg_dices.append(fg_d)
         for c in range(num_classes):
@@ -188,6 +208,7 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
             "per_class_dice": pc,
             "hcost_argmax": hcost_argmax_list[-1] if D is not None else None,
             "hcost_expected": hcost_expected_list[-1] if D is not None else None,
+            "prostate_dice": pros_d,
         })
 
     # aggregate
@@ -195,6 +216,8 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
         "mean_fg_dice": float(np.mean(mean_fg_dices)) if mean_fg_dices else 0.0,
         "per_class_dice_mean": [],
         "per_class_dice_std": [],
+        "prostate_dice_mean": float(np.mean(prostate_dice_list)) if prostate_dice_list else None,
+        "prostate_dice_std": float(np.std(prostate_dice_list)) if prostate_dice_list else None
     }
 
     for c in range(num_classes):
@@ -264,9 +287,11 @@ def main():
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     with open(out_csv, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["model", "mean_fg_dice", "hcost_argmax_mean", "hcost_expected_mean"])
-        writer.writerow(["flat", flat_agg["mean_fg_dice"], flat_agg["hcost_argmax_mean"], flat_agg["hcost_expected_mean"]])
-        writer.writerow(["hier", hier_agg["mean_fg_dice"], hier_agg["hcost_argmax_mean"], hier_agg["hcost_expected_mean"]])
+        writer.writerow(["model", "mean_fg_dice", "prostate_dice", "hcost_argmax_mean", "hcost_expected_mean"])
+        writer.writerow(["flat", flat_agg["mean_fg_dice"], flat_agg["prostate_dice_mean"],
+                 flat_agg["hcost_argmax_mean"], flat_agg["hcost_expected_mean"]])
+        writer.writerow(["hier", flat_agg["mean_fg_dice"], flat_agg["prostate_dice_mean"],
+                 flat_agg["hcost_argmax_mean"], flat_agg["hcost_expected_mean"]])
     print(f"Saved CSV:  {out_csv}")
 
     # Print quick summary
@@ -276,7 +301,8 @@ def main():
     if args.use_hierarchical_metrics:
         print(f"Flat expected h-cost:      {flat_agg['hcost_expected_mean']:.4f}")
         print(f"Hier expected h-cost:      {hier_agg['hcost_expected_mean']:.4f}")
-
+        print(f"Flat prostate Dice:        {flat_agg['prostate_dice_mean']:.4f}")
+        print(f"Hier prostate Dice:        {hier_agg['prostate_dice_mean']:.4f}")
 
 if __name__ == "__main__":
     main()

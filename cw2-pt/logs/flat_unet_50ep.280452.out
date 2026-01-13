@@ -84,3 +84,9 @@ Epoch 038 | 181.6s | train loss 0.0762 dice 0.8549 | val loss 0.1961 dice 0.7489
 	   Saved checkpoint (best overall Dice) to data/preprocessed_data/best_model_dice.pt
 Epoch 039 | 179.4s | train loss 0.0760 dice 0.8562 | val loss 0.1756 dice 0.7338
    Logged metrics to metrics.json and metrics.csv
+Epoch 040 | 178.8s | train loss 0.0772 dice 0.8549 | val loss 0.1906 dice 0.7300
+   Logged metrics to metrics.json and metrics.csv
+Epoch 041 | 177.8s | train loss 0.0764 dice 0.8553 | val loss 0.1945 dice 0.7340
+   Logged metrics to metrics.json and metrics.csv
+Epoch 042 | 179.2s | train loss 0.0764 dice 0.8554 | val loss 0.2016 dice 0.7062
+   Logged metrics to metrics.json and metrics.csv
