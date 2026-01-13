@@ -74,6 +74,12 @@ def reshape_to_2d(images, masks):
 	masks = masks.reshape(b * z, h, w)
 	return images, masks
 
+def expected_hierarchical_cost(logits: torch.Tensor, targets: torch.Tensor, D: torch.Tensor) -> float:
+	probs = torch.softmax(logits, dim=1)
+	D_row = D[targets]
+	e_cost = (probs.permute(0,2,3,1) * D_row).sum(dim=1)
+	return e_cost.mean().item()
+
 
 def dice_score(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps: float = 1e-6) -> float:
 	"""Compute mean Dice across classes present in targets."""
@@ -144,6 +150,7 @@ def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=No
 def evaluate(model, loader, device, loss_fn, num_classes, D=None):
 	model.eval()
 	total_loss, total_px, total_dice, dice_count = 0.0, 0, 0.0, 0
+	total_hcost, hcost_count = 0.0, 0 
 	# conf_H = torch.zeros((num_classes, num_classes), device=device)
 	# per_class_dice_vals = None
 	# per_class_hd95_vals = None
@@ -159,6 +166,11 @@ def evaluate(model, loader, device, loss_fn, num_classes, D=None):
 			total_loss += loss.item() * masks.numel()
 			preds = logits.argmax(dim=1)
 			total_px += masks.numel()
+
+			if D is not None:
+				h_cost = expected_hierarchical_cost(preds, masks, D)
+				total_hcost += h_cost
+				hcost_count += 1
 
 			dice = dice_score(preds, masks, num_classes)
 			total_dice += dice
@@ -179,9 +191,13 @@ def evaluate(model, loader, device, loss_fn, num_classes, D=None):
 
 	avg_loss = total_loss / max(1, total_px)
 	mean_dice = total_dice / max(1, dice_count)
+
+	if D is not None:
+		mean_hcost = total_hcost / max(1, hcost_count)
+		return avg_loss, mean_dice, mean_hcost
 	# avg_super_dice = super_dice_sum / max(1, super_dice_count)
 	# avg_super_auc = super_auc_sum / max(1, super_auc_count)
-	return avg_loss, mean_dice
+	return avg_loss, mean_dice, None
 	#, avg_super_dice, avg_super_auc, per_class_dice_vals, per_class_hd95_vals, conf_H
 
 
@@ -264,7 +280,7 @@ def main():
 		with open(metrics_csv, "w", newline="") as f:
 			writer = csv.DictWriter(f, fieldnames=[
 				"epoch", "train_loss", "train_dice",
-				"val_loss", "val_dice"
+				"val_loss", "val_dice", "h_cost"
 			], extrasaction="ignore")
 			writer.writeheader()
 			for row in metrics:
@@ -285,7 +301,7 @@ def main():
 				model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
 			# val_loss, val_dice, val_super_dice, val_super_auc, val_dice_pc, val_hd95_pc, val_H = evaluate(
 			# 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
-			val_loss, val_dice = evaluate(
+			val_loss, val_dice, val_hcost = evaluate(
 			 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
 			dt = time.time() - t0
 
@@ -300,8 +316,9 @@ def main():
 			# 	print(f"   Per-class val   HD95: {[round(x,2) if np.isfinite(x) else str(x) for x in val_hd95_pc]}")
 
 			print(f"Epoch {epoch:03d} | {dt:5.1f}s | "
-				  f"train loss {train_loss:.4f} dice {train_dice:.4f} | "
-				  f"val loss {val_loss:.4f} dice {val_dice:.4f}")
+				f"train loss {train_loss:.4f} dice {train_dice:.4f} | "
+				f"val loss {val_loss:.4f} dice {val_dice:.4f} | "
+				f"expected hierarchical cost {val_hcost:.4f}")
 
 			metrics.append({
 				"epoch": epoch,
@@ -311,6 +328,7 @@ def main():
 				# "train_super_auc": train_super_auc,
 				"val_loss": val_loss,
 				"val_dice": val_dice
+				"h_cost": val_hcost
 				# "val_super_dice": val_super_dice,
 				# "val_super_auc": val_super_auc,
 				# "train_dice_per_class": train_dice_pc,
@@ -320,6 +338,7 @@ def main():
 				# "train_h_conf": train_H.tolist() if args.use_hierarchical_loss else None,
 				# "val_h_conf": val_H.tolist() if args.use_hierarchical_loss else None,
 			})
+			
 			mj, mc = save_metrics()
 			print(f"   Logged metrics to {mj} and {mc}")
 
