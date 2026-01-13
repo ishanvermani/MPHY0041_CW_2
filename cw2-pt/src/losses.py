@@ -37,14 +37,14 @@ def build_distance_matrix(num_classes: int, device: torch.device)-> torch.Tensor
     
     D = torch.tensor([
         [0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00], # background
-        [0.00, 0.00, 0.91, 0.64, 0.45, 0.36, 0.82, 0.64, 0.55], # Bladder
-        [0.00, 0.91, 0.00, 0.45, 0.82, 0.91, 1.00, 0.73, 0.73], # Bone 
-        [0.00, 0.64, 0.45, 0.00, 0.36, 0.45, 0.55, 0.27, 0.27], # Obturator Internus
-        [0.00, 0.45, 0.82, 0.36, 0.00, 0.18, 0.36, 0.18, 0.09], # Transition (pros 1)
-        [0.00, 0.36, 0.91, 0.45, 0.18, 0.00, 0.55, 0.36, 0.27], # Central Gland (Pros 2)
-        [0.00, 0.82, 1.00, 0.55, 0.36, 0.55, 0.00, 0.27, 0.36], # Rectum
-        [0.00, 0.64, 0.73, 0.27, 0.18, 0.36, 0.27, 0.00, 0.09], # Seminal Vesicle
-        [0.00, 0.55, 0.73, 0.27, 0.09, 0.27, 0.36, 0.09, 0.00], # Neurovascular Bundle
+        [0.00, 0.00, 0.91, 0.64, 0.45, 0.45, 0.82, 0.64, 0.55], # Bladder
+        [0.00, 0.91, 0.00, 0.45, 0.82, 0.82, 1.00, 0.73, 0.73], # Bone 
+        [0.00, 0.64, 0.45, 0.00, 0.36, 0.36, 0.55, 0.27, 0.27], # Obturator Internus
+        [0.00, 0.45, 0.82, 0.36, 0.00, 0.00, 0.36, 0.18, 0.09], # Transition (pros 1)
+        [0.00, 0.45, 0.82, 0.36, 0.00, 0.00, 0.36, 0.18, 0.09], # Central Gland (Pros 2)
+        [0.00, 0.82, 1.00, 0.55, 0.36, 0.36, 0.00, 0.27, 0.36], # Rectum
+        [0.00, 0.64, 0.73, 0.27, 0.18, 0.18, 0.27, 0.00, 0.09], # Seminal Vesicle
+        [0.00, 0.55, 0.73, 0.27, 0.09, 0.09, 0.36, 0.09, 0.00], # Neurovascular Bundle
     ], device=device, dtype=torch.float32)
 
     if D.shape != (num_classes, num_classes):
@@ -76,6 +76,7 @@ def hierarchical_ce_loss(
         logits: torch.Tensor,
         targets: torch.Tensor,
         D: torch.Tensor,
+        alpha: float=10,
         epsilon: float = 1e-8
     ) -> torch.Tensor:
 
@@ -95,6 +96,6 @@ def hierarchical_ce_loss(
     penalties = D[targets, preds]
 
     # weight the cross entropy loss with the penalties
-    weighted_ce = ce * (1 + penalties)
+    weighted_ce = ce * (1 + alpha*penalties)
 
     return weighted_ce.mean()
