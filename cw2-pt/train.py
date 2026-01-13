@@ -78,7 +78,7 @@ def reshape_to_2d(images, masks):
 def dice_score(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps: float = 1e-6) -> float:
 	"""Compute mean Dice across classes present in targets."""
 	dice_sum, count = 0.0, 0
-	for c in range(num_classes): # Ignore background when calculating dice score 
+	for c in range(1, num_classes): # Ignore background when calculating dice score 
 		pred_c = (preds == c)
 		tgt_c = (targets == c)
 		denom = pred_c.sum() + tgt_c.sum()
@@ -299,7 +299,7 @@ def main():
 
 			if val_super_dice > best_super:
 				best_super = val_super_dice
-				ckpt_path = data_root / "best_model.pt"
+				ckpt_path = data_root / "hierarchy_50_model.pt"
 				torch.save({"model_state": model.state_dict(),
 						"epoch": epoch,
 						"val_super_dice": val_super_dice,
