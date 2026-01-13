@@ -16,6 +16,8 @@ class MalePelvicDataset(Dataset):
             [p for p in self.image_dir.iterdir() if p.name.endswith(".nii") or p.name.endswith(".nii.gz")]
         )
 
+        self.len = len(self.image_files)
+
         # No need to normalize because done already in preprocess.py
 
     def __len__(self):

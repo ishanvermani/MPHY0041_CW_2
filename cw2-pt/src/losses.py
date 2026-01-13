@@ -38,15 +38,15 @@ def build_distance_matrix(num_classes: int, device: torch.device)-> torch.Tensor
     # ], device=device, dtype=torch.float32)
     
     D = torch.tensor([
-        [0, 0, 0, 0, 0, 0, 0, 0, 0],  # background
-        [0, 0, 3, 1, 2, 2, 2, 1, 1],  # Bladder
-        [0, 3, 0, 3, 3, 3, 3, 3, 3],  # Bone 
-        [0, 1, 3, 0, 1, 1, 2, 1, 1],  # Obturator Internus
-        [0, 2, 3, 1, 0, 0, 2, 1, 1],  # Transition (pros 1)
-        [0, 2, 3, 1, 0, 0, 2, 1, 1],  # Central Gland (Pros 2)
-        [0, 2, 3, 2, 2, 2, 0, 1, 1],  # Rectum
-        [0, 1, 3, 1, 1, 1, 1, 0, 1],  # Seminal Vesicle
-        [0, 1, 3, 1, 1, 1, 1, 1, 0],  # Neurovascular Bundle
+        [0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00], # background
+        [0.00, 0.00, 0.91, 0.64, 0.45, 0.36, 0.82, 0.64, 0.55], # Bladder
+        [0.00, 0.91, 0.00, 0.45, 0.82, 0.91, 1.00, 0.73, 0.73], # Bone 
+        [0.00, 0.64, 0.45, 0.00, 0.36, 0.45, 0.55, 0.27, 0.27], # Obturator Internus
+        [0.00, 0.45, 0.82, 0.36, 0.00, 0.18, 0.36, 0.18, 0.09], # Transition (pros 1)
+        [0.00, 0.36, 0.91, 0.45, 0.18, 0.00, 0.55, 0.36, 0.27], # Central Gland (Pros 2)
+        [0.00, 0.82, 1.00, 0.55, 0.36, 0.55, 0.00, 0.27, 0.36], # Rectum
+        [0.00, 0.64, 0.73, 0.27, 0.18, 0.36, 0.27, 0.00, 0.09], # Seminal Vesicle
+        [0.00, 0.55, 0.73, 0.27, 0.09, 0.27, 0.36, 0.09, 0.00], # Neurovascular Bundle
     ], device=device, dtype=torch.float32)
 
     if D.shape != (num_classes, num_classes):

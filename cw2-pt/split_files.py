@@ -2,14 +2,15 @@ import argparse
 import random
 import shutil
 from pathlib import Path
+from typing import Dict, List, Tuple
 
 
 def split_nifti_files(data_dir: str, 
-                      output_dir: str | None = None,
+                      output_dir: str,
                       train_ratio: float = 0.8,
                       val_ratio: float = 0.1,
                       test_ratio: float = 0.1,
-                      random_seed: int = 42) -> dict[str, list[tuple[str, str]]]:
+                      random_seed: int = 42) -> Dict[str, List[Tuple[str, str]]]:
     '''
     
     This function finds all *_img.nii files and their corresponding *_mask.nii files,
@@ -135,7 +136,7 @@ def main():
     parser.add_argument(
         '--output_dir',
         type=str,
-        default=None,
+        required=True,
         help='Path to output directory. If not provided, files are not moved/copied'
     )
     
