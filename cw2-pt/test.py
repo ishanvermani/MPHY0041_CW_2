@@ -33,6 +33,7 @@ from torch.utils.data import DataLoader
 from dataset import MalePelvicDataset
 from src.model import UNet
 from src.losses import build_distance_matrix
+from src.benchmark import hd95_per_class
 
 
 # ---------- Metrics ----------
@@ -170,6 +171,7 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
     hcost_argmax_list = []
     hcost_expected_list = []
     prostate_dice_list = []
+    hd95_list = []
 
 
     for batch in test_loader:
@@ -187,6 +189,17 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
         pros_d = prostate_superclass_dice(preds, mask, prostate_ids=(4,5))
         prostate_dice_list.append(pros_d)
 
+        #=============================================================
+        # HD95
+        #=============================================================
+
+        hd95_vals = hd95_per_class(preds,mask,num_classes)
+        valid_hd95 = [v for v in hd95_vals if not np.isnan(v) and not np.isinf(v)]
+        avg_hd95 = np.mean(valid_hd95) if valid_hd95 else float("nan")
+        
+        #=============================================================
+
+
         mean_fg_dices.append(fg_d)
         for c in range(num_classes):
             per_class_dice_accum[c].append(pc[c])
@@ -202,6 +215,7 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
 
             hcost_argmax_list.append(h_arg)
             hcost_expected_list.append(h_exp)
+            hd95_list.append(avg_hd95)
 
         per_case.append({
             "mean_fg_dice": fg_d,
@@ -209,6 +223,7 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
             "hcost_argmax": hcost_argmax_list[-1] if D is not None else None,
             "hcost_expected": hcost_expected_list[-1] if D is not None else None,
             "prostate_dice": pros_d,
+            "hd95_mean": avg_hd95
         })
 
     # aggregate
@@ -217,7 +232,9 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
         "per_class_dice_mean": [],
         "per_class_dice_std": [],
         "prostate_dice_mean": float(np.mean(prostate_dice_list)) if prostate_dice_list else None,
-        "prostate_dice_std": float(np.std(prostate_dice_list)) if prostate_dice_list else None
+        "prostate_dice_std": float(np.std(prostate_dice_list)) if prostate_dice_list else None,
+        "hd95_mean": float(np.nanmean(hd95_list)) if hd95_list else None,
+        "hd95_std": float(np.nanstd(hd95_list)) if hd95_list else None
     }
 
     for c in range(num_classes):
