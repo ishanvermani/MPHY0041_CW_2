@@ -294,15 +294,17 @@ def main():
 	training_val_dice = []
 
 	
-	if (args.alpha is None):
+	if args.use_hierarchical_loss and args.alpha is None:
 
 		print(f"Starting hyperparam training for {args.training_epochs} epochs on {device}…")
 
-		alpha_gridsearch = [1, 10]
+		alpha_gridsearch = [1, 2, 3, 5, 10]
+		initial_state = model.state_dict()
 
 		for a in alpha_gridsearch:
 
-			model.reset_parameters()
+			model.load_state_dict(initial_state)
+			optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 			t0 = time.time()
 			
 			print(f"Training alpha {a} for {args.training_epochs} epochs")
@@ -320,18 +322,16 @@ def main():
 			
 			training_val_dice.append(val_dice)
 
-
 		alpha = alpha_gridsearch[np.argmax(training_val_dice)]
 
 		print(f"Selected alpha: {alpha}")
+		
+		model.load_state_dict(initial_state)
 
 	else:
 		alpha = args.alpha
 
 		print(f"Using provided alpha: {alpha}")
-
-
-	model.reset_parameters()
 
 	print(f"Starting training for {args.epochs} epochs on {device}…")
 	# best_super = -float("inf")
