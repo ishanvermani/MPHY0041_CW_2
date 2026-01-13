@@ -49,3 +49,13 @@ Epoch 021 | 177.9s | train loss 0.0922 dice 0.8283 | val loss 0.1717 dice 0.7382
    Logged metrics to metrics.json and metrics.csv
 Epoch 022 | 180.2s | train loss 0.0912 dice 0.8276 | val loss 0.1664 dice 0.7470
    Logged metrics to metrics.json and metrics.csv
+Epoch 023 | 178.0s | train loss 0.0882 dice 0.8347 | val loss 0.1717 dice 0.7361
+   Logged metrics to metrics.json and metrics.csv
+Epoch 024 | 178.0s | train loss 0.0882 dice 0.8351 | val loss 0.1825 dice 0.7333
+   Logged metrics to metrics.json and metrics.csv
+Epoch 025 | 177.8s | train loss 0.0857 dice 0.8394 | val loss 0.1687 dice 0.7362
+   Logged metrics to metrics.json and metrics.csv
+Epoch 026 | 177.8s | train loss 0.0870 dice 0.8357 | val loss 0.1672 dice 0.7347
+   Logged metrics to metrics.json and metrics.csv
+Epoch 027 | 177.8s | train loss 0.0861 dice 0.8393 | val loss 0.1654 dice 0.7348
+   Logged metrics to metrics.json and metrics.csv

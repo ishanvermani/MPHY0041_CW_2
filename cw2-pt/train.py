@@ -43,7 +43,6 @@ from src.benchmark import (
 	prostate_superclass_metrics,
 )
 
-
 def make_dataloaders(data_root: Path, batch_size: int, num_workers: int,
 					 patch_size=(16, 192, 192), samples_per_volume: int = 8,
 					 foreground_prob: float = 0.8):
@@ -77,7 +76,7 @@ def reshape_to_2d(images, masks):
 def expected_hierarchical_cost(logits: torch.Tensor, targets: torch.Tensor, D: torch.Tensor) -> float:
 	probs = torch.softmax(logits, dim=1)
 	D_row = D[targets]
-	e_cost = (probs.permute(0,2,3,1) * D_row).sum(dim=1)
+	e_cost = (probs.permute(0,2,3,1) * D_row).sum(dim=-1)
 	return e_cost.mean().item()
 
 
@@ -168,7 +167,7 @@ def evaluate(model, loader, device, loss_fn, num_classes, D=None):
 			total_px += masks.numel()
 
 			if D is not None:
-				h_cost = expected_hierarchical_cost(preds, masks, D)
+				h_cost = expected_hierarchical_cost(logits, masks, D)
 				total_hcost += h_cost
 				hcost_count += 1
 
@@ -327,7 +326,7 @@ def main():
 				# "train_super_dice": train_super_dice,
 				# "train_super_auc": train_super_auc,
 				"val_loss": val_loss,
-				"val_dice": val_dice
+				"val_dice": val_dice,
 				"h_cost": val_hcost
 				# "val_super_dice": val_super_dice,
 				# "val_super_auc": val_super_auc,
@@ -338,7 +337,7 @@ def main():
 				# "train_h_conf": train_H.tolist() if args.use_hierarchical_loss else None,
 				# "val_h_conf": val_H.tolist() if args.use_hierarchical_loss else None,
 			})
-			
+
 			mj, mc = save_metrics()
 			print(f"   Logged metrics to {mj} and {mc}")
 
