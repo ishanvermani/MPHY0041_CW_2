@@ -1,7 +1,7 @@
 #!/bin/bash
 #$ -S /bin/bash
 #$ -cwd
-#$ -N hierarchy_unet_50ep
+#$ -N hierarchy_unet_superd_hyperparm
 #$ -o logs/$JOB_NAME.$JOB_ID.out
 #$ -e logs/$JOB_NAME.$JOB_ID.err
 #$ -l h_rt=08:00:00
@@ -21,6 +21,7 @@ $PY train.py \
   --data_dir data/preprocessed_data \
   --use_hierarchical_loss \
   --epochs 50 \
+  --training_epochs 5 \
   --batch_size 1 \
   --lr 1e-3 \
   --num_classes 9 \

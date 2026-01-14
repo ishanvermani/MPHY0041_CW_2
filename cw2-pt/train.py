@@ -385,7 +385,7 @@ def main():
 
 			if val_super_dice > best_super:
 				best_super = val_super_dice
-				ckpt_path = data_root / "flat_super_dice_model.pt"
+				ckpt_path = data_root / "hier_super_dice_model.pt"
 				torch.save({"model_state": model.state_dict(),
 						"epoch": epoch,
 						"val_super_dice": val_super_dice,
@@ -396,7 +396,7 @@ def main():
 
 			if val_dice > best_val_dice:
 				best_val_dice = val_dice
-				dice_ckpt = data_root / "flat_dice_model.pt"
+				dice_ckpt = data_root / "hier_dice_model.pt"
 				torch.save({"model_state": model.state_dict(),
 						"epoch": epoch,
 						"val_dice": val_dice,
