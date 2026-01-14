@@ -33,3 +33,4 @@
 
 
 
+had to pip install scipy and  
