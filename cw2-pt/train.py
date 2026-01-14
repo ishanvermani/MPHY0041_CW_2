@@ -5,6 +5,8 @@ Quick start (CPU / CUDA):
 	python train.py \
 		--data_dir data/preprocessed_data \
 		--epochs 10 \
+		--training_epochs 5 \
+		--alpha 10 \
 		--batch_size 1 \
 		--lr 1e-3 \
 		--num_classes 9 \
@@ -21,6 +23,7 @@ Key args:
 	--foreground_prob          probability of sampling patches around foreground (default 0.8)
 	--num_classes              number of segmentation classes (masks clipped to 0..8, default 9)
 	--metrics_path             optional path prefix for saved metrics (json/csv)
+	--alpha						penalty hyperparam
 """
 
 import argparse
@@ -98,7 +101,7 @@ def dice_score(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps
 	return (dice_sum / count).item()
 
 
-def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=None):
+def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=None, alpha=None):
 	model.train()
 	total_loss, total_px, total_dice, dice_count = 0.0, 0, 0.0, 0
 	# conf_H = torch.zeros((num_classes, num_classes), device=device)
@@ -113,7 +116,7 @@ def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=No
 
 		optimizer.zero_grad()
 		logits = model(images)
-		loss = loss_fn(logits, masks)
+		loss = loss_fn(logits, masks, alpha)
 		loss.backward()
 		optimizer.step()
 
@@ -205,6 +208,8 @@ def main():
 	parser.add_argument("--data_dir", type=str, required=True,
 						help="Path to preprocessed data root containing train/val splits")
 	parser.add_argument("--epochs", type=int, default=10)
+	parser.add_argument("--training_epochs", type=int, default=1)
+	parser.add_argument("--alpha", type=int, default=None)
 	parser.add_argument("--batch_size", type=int, default=1)
 	parser.add_argument("--lr", type=float, default=1e-3)
 	parser.add_argument("--num_workers", type=int, default=4)
@@ -241,12 +246,12 @@ def main():
 	if args.use_hierarchical_loss:
 		D = build_distance_matrix(args.num_classes, device)
 
-		def loss_fn(logits, targets):
+		def loss_fn(logits, targets, alpha):
 			if targets.max() >= args.num_classes:
 				targets = targets.clamp_max(args.num_classes - 1)
-			return hierarchical_ce_loss(logits, targets, D)
+			return hierarchical_ce_loss(logits, targets, D, alpha)
 	else:
-		def loss_fn(logits, targets):
+		def loss_fn(logits, targets, alpha):
 			if targets.max() >= args.num_classes:
 				targets = targets.clamp_max(args.num_classes - 1)
 			return ce_loss(logits, targets)
@@ -271,6 +276,48 @@ def main():
 			for row in metrics:
 				writer.writerow(row)
 		return metrics_json, metrics_csv
+	
+	training_val_dice = []
+
+	
+	if args.use_hierarchical_loss and args.alpha is None:
+
+		print(f"Starting hyperparam training for {args.training_epochs} epochs on {device}…")
+
+		alpha_gridsearch = [1, 2, 3, 5, 10]
+		initial_state = model.state_dict()
+
+		for a in alpha_gridsearch:
+
+			model.load_state_dict(initial_state)
+			optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+			t0 = time.time()
+			
+			print(f"Training alpha {a} for {args.training_epochs} epochs")
+			for epoch in range(args.training_epochs):
+			
+				train_loss, train_dice = train_one_epoch(
+					model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, a if args.use_hierarchical_loss else None)
+			
+			val_loss, val_dice, val_hcost = evaluate(
+			 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, a if args.use_hierarchical_loss else None)
+			dt = time.time() - t0
+
+			print(f"Alpha {a:03d} | {dt:5.1f}s | "
+				f"val loss {val_loss:.4f} dice {val_dice:.4f}" )
+			
+			training_val_dice.append(val_dice)
+
+		alpha = alpha_gridsearch[np.argmax(training_val_dice)]
+
+		print(f"Selected alpha: {alpha}")
+		
+		model.load_state_dict(initial_state)
+
+	else:
+		alpha = args.alpha
+
+		print(f"Using provided alpha: {alpha}")
 
 	# def save_metrics():
 	# 	metrics_json.parent.mkdir(parents=True, exist_ok=True)
@@ -296,12 +343,13 @@ def main():
 			# 	model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
 			# val_loss, val_dice, val_super_dice, val_super_auc, val_dice_pc, val_hd95_pc, val_H = evaluate(
 			# 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
-			train_loss, train_dice, train_super_dice, train_super_auc = train_one_epoch(
-				model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
+			train_loss, train_dice = train_one_epoch(
+				model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, alpha if args.use_hierarchical_loss else None)
 			# val_loss, val_dice, val_super_dice, val_super_auc, val_dice_pc, val_hd95_pc, val_H = evaluate(
 			# 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
-			val_loss, val_dice, val_hcost, val_super_dice, val_super_auc = evaluate(
-			 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
+			val_loss, val_dice, val_hcost = evaluate(
+			 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, alpha if args.use_hierarchical_loss else None)
+
 			dt = time.time() - t0
 
 			print(f"Epoch {epoch:03d} | {dt:5.1f}s | "
