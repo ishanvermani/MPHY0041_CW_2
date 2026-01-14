@@ -9,6 +9,7 @@ Subcommands:
 
 import argparse
 import json
+import csv
 from pathlib import Path
 
 import torch
@@ -44,9 +45,9 @@ def cmd_best_score(args: argparse.Namespace):
 		print(f"Error reading file: {e}")
 
 
-# ---------------------------
-# eval
-# ---------------------------
+# ---------------------------------------------
+# Evaluate the model on train & validation sets
+# ---------------------------------------------
 
 def cmd_eval(args: argparse.Namespace):
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -88,7 +89,6 @@ def cmd_eval(args: argparse.Namespace):
 	for name, obj in results.items():
 		agg = obj["agg"]
 		rows.append([name, agg.get("mean_fg_dice"), agg.get("prostate_dice_mean"), agg.get("hcost_expected_mean")])
-	import csv
 	with open(out_csv, "w", newline="") as f:
 		writer = csv.writer(f)
 		writer.writerow(headers)
@@ -96,17 +96,17 @@ def cmd_eval(args: argparse.Namespace):
 	print(f"Saved CSV:  {out_csv}")
 
 	# Console summary
-	print("\n=== TEST SUMMARY ===")
+	print("\n=== Evaluation SUMMARY ===")
 	for name, obj in results.items():
 		agg = obj["agg"]
 		print(f"{name.capitalize()} mean foreground Dice: {agg.get('mean_fg_dice', float('nan')):.4f}")
 		if args.use_hierarchical_metrics:
 			print(f"{name.capitalize()} expected h-cost:      {agg.get('hcost_expected_mean', float('nan')):.4f}")
-		print(f"{name.capitalize()} prostate Dice:        {agg.get('prostate_dice_mean', float('nan')):.4f}")
+		print(f"{name.capitalize()} mean prostate Dice:        {agg.get('prostate_dice_mean', float('nan')):.4f}")
 
 
 # ---------------------------
-# plot
+# Plot loss/dice curves
 # ---------------------------
 
 def cmd_plot(args: argparse.Namespace):
@@ -118,9 +118,9 @@ def cmd_plot(args: argparse.Namespace):
 	pld.plot_dice(metrics, out_path)
 
 
-# ---------------------------
-# display
-# ---------------------------
+# ---------------------------------
+# Display predictions on nii images
+# ---------------------------------
 
 def cmd_display(args: argparse.Namespace):
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
