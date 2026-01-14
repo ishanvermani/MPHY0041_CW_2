@@ -5,12 +5,12 @@
 #############################################
 
 # Show best model dice, assuming best_model.pt exists
-python inference.py best-score --ckpt data/processed/best_model.pt
+python inference.py best-score --ckpt model_weights/best_model.pt
 
 # Evaluate models (requires images/ and masks/ under data_dir)
-python inference.py eval --data_dir data/preprocessed_data/test \
-		--flat_ckpt data/preprocessed_data/best_flat.pt \
-		--hier_ckpt data/preprocessed_data/best_hier.pt \
+python inference.py eval --data_dir split_data/test \
+		--flat_ckpt model_weights/best_model_flat.pt \
+		--hier_ckpt model_weights/best_model_hier.pt \
 		--num_classes 9 --use_hierarchical_metrics \
 		--out_json test_metrics.json --out_csv test_metrics.csv
 
