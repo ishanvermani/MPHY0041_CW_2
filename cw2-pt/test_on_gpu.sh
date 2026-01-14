@@ -25,5 +25,6 @@ $PY test.py \
   --hier_ckpt model_weights/best_model_heir.pt \
   --num_classes 9 \
   --use_hierarchical_metrics \
+  --save_h_conf metrics/h_conf_{model}.npy
   --out_csv metrics/test_metrics.csv \
   --out_json metrics/test_metrics.json

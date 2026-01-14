@@ -1,5 +1,7 @@
-Saved JSON: metrics/test_metrics.json
-Saved CSV:  metrics/test_metrics.csv
+Saved JSON: test_metrics.json
+Saved CSV:  test_metrics.csv
+Saved H confusion for flat to metrics/h_conf_flat.npy
+Saved H confusion for hier to metrics/h_conf_hier.npy
 
 === TEST SUMMARY ===
 Flat mean foreground Dice: 0.7618
