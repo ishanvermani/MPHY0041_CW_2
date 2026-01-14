@@ -343,11 +343,11 @@ def main():
 			# 	model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
 			# val_loss, val_dice, val_super_dice, val_super_auc, val_dice_pc, val_hd95_pc, val_H = evaluate(
 			# 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
-			train_loss, train_dice = train_one_epoch(
+			train_loss, train_dice, train_super_dice, train_super_auc = train_one_epoch(
 				model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, alpha if args.use_hierarchical_loss else None)
 			# val_loss, val_dice, val_super_dice, val_super_auc, val_dice_pc, val_hd95_pc, val_H = evaluate(
 			# 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
-			val_loss, val_dice, val_hcost = evaluate(
+			val_loss, val_dice, val_hcost, val_super_dice, val_super_auc = evaluate(
 			 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, alpha if args.use_hierarchical_loss else None)
 
 			dt = time.time() - t0
@@ -365,11 +365,11 @@ def main():
 				"epoch": epoch,
 				"train_loss": train_loss,
 				"train_dice": train_dice,
-				"train_super_dice": train_super_dice
+				"train_super_dice": train_super_dice,
 				"train_super_auc": train_super_auc,
 				"val_loss": val_loss,
 				"val_dice": val_dice,
-				"h_cost": val_hcost
+				"h_cost": val_hcost,
 				"val_super_dice": val_super_dice,
 				"val_super_auc": val_super_auc,
 				# "train_dice_per_class": train_dice_pc
