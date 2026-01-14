@@ -1,8 +1,10 @@
 """Plot hierarchical confusion matrix H as a heatmap.
 
-By default it picks the entry with the highest `val_super_dice` (fallback to `val_dice`),
-pulls the chosen split's H (train_h_conf or val_h_conf), and plots it.
+For test outputs you typically have either:
+- a file with top-level keys {"flat": {..., "h_conf": [...]}, "hier": {..., "h_conf": [...]}}
+- or a single dict {"h_conf": [...]} (as saved by test.py when using --save_h_conf)
 
+This script now loads H directly without any "best epoch" selection.
 """
 
 import argparse
@@ -18,11 +20,35 @@ def load_metrics(path: Path):
 		return json.load(f)
 
 
-def pick_best(metrics, key_candidates):
-	for key in key_candidates:
-		if all(key in m for m in metrics):
-			return max(metrics, key=lambda m: m.get(key, float("-inf")))
-	return metrics[-1]  # fallback: last epoch
+def extract_h_conf(data, model: str | None = None, split: str | None = None, h_key: str = "h_conf"):
+	"""Return (H, title_suffix).
+
+	Handles three cases:
+	1) dict with top-level h_conf
+	2) dict with flat/hier entries each containing h_conf
+	3) legacy list of epoch dicts with split-specific key (train_h_conf/val_h_conf)
+	"""
+
+	# case 1: direct h_conf
+	if isinstance(data, dict) and h_key in data:
+		return data[h_key], data.get("epoch", "?")
+
+	# case 2: test metrics with flat/hier blocks
+	if isinstance(data, dict) and model and model in data and isinstance(data[model], dict):
+		entry = data[model]
+		if h_key in entry:
+			return entry[h_key], entry.get("epoch", model)
+
+	# case 3: legacy training metrics list
+	if isinstance(data, list):
+		if not split:
+			raise ValueError("split must be provided when metrics is a list of epochs")
+		key = f"{split}_h_conf"
+		for m in reversed(data):
+			if key in m:
+				return m[key], m.get("epoch", "?")
+
+	raise ValueError("Could not find h_conf in provided metrics")
 
 
 def plot_heatmap(H: np.ndarray, out: Path, title: str = "Hierarchical Confusion", class_names=None):
@@ -44,23 +70,27 @@ def plot_heatmap(H: np.ndarray, out: Path, title: str = "Hierarchical Confusion"
 
 def main():
 	parser = argparse.ArgumentParser(description="Plot hierarchical confusion H as heatmap")
-	parser.add_argument("--metrics", type=Path, required=True, help="Path to metrics.json")
-	parser.add_argument("--split", choices=["train", "val"], default="val", help="Which split's H to plot")
+	parser.add_argument("--metrics", type=Path, required=True, help="Path to metrics or h_conf json/npy")
+	parser.add_argument("--model", choices=["flat", "hier"], default="hier",
+				help="Which model block to read when metrics has flat/hier entries (ignored for direct h_conf file)")
+	parser.add_argument("--split", choices=["train", "val"], default=None,
+				help="Only needed for legacy training metrics list; ignored for test-style files")
+	parser.add_argument("--h_key", type=str, default="h_conf", help="Key name containing the confusion matrix")
 	parser.add_argument("--out", type=Path, default=Path("h_conf.png"), help="Output image path")
-	parser.add_argument("--key", type=str, nargs="*", default=["val_super_dice", "val_dice"],
-					help="Keys to select best epoch (in priority order)")
+	parser.add_argument("--class_names", type=str, nargs="*", default=None,
+				help="Optional class names for axes (order must match matrix)")
 	args = parser.parse_args()
 
-	metrics = load_metrics(args.metrics)
-	best = pick_best(metrics, args.key)
+	# load file (json or npy)
+	if args.metrics.suffix.lower() == ".npy":
+		H = np.load(args.metrics)
+		title_suffix = args.model
+	else:
+		metrics = load_metrics(args.metrics)
+		H, title_suffix = extract_h_conf(metrics, model=args.model, split=args.split, h_key=args.h_key)
+		H = np.array(H, dtype=float)
 
-	H_key = f"{args.split}_h_conf"
-	H = best.get(H_key)
-	if H is None:
-		raise ValueError(f"No {H_key} found in selected metrics entry")
-
-	H_arr = np.array(H, dtype=float)
-	plot_heatmap(H_arr, args.out, title=f"{args.split} H (epoch {best.get('epoch', '?')})")
+	plot_heatmap(H, args.out, title=f"H ({title_suffix})", class_names=args.class_names)
 	print(f"Saved heatmap to {args.out}")
 
 

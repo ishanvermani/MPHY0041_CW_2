@@ -107,6 +107,7 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
     # accumulators
     mean_fg_dices = []
     per_class_dice_accum = [[] for _ in range(num_classes)]
+    per_class_hd95_accum = [[] for _ in range(num_classes)]
     hcost_expected_list = []
     prostate_dice_list = []
     hd95_list = []
@@ -145,6 +146,10 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
         mean_fg_dices.append(fg_d)
         for c in range(num_classes):
             per_class_dice_accum[c].append(pc[c])
+            per_class_hd95_accum[c].append(hd95_vals[c])
+
+        # overall HD95 accumulator
+        hd95_list.append(avg_hd95)
 
         # Hierarchical costs (optional)
         if D is not None:
@@ -155,7 +160,6 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
             h_exp = expected_hier_cost_from_logits(logits, targets, D)
 
             hcost_expected_list.append(h_exp)
-            hd95_list.append(avg_hd95)
 
             if H_accum is not None:
                 H_accum += hierarchy_confusion_fast(preds, mask, D)
@@ -165,7 +169,8 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
             "per_class_dice": pc,
             "hcost_expected": hcost_expected_list[-1] if D is not None else None,
             "prostate_dice": pros_d,
-            "hd95_mean": avg_hd95
+            "hd95_mean": avg_hd95,
+            "per_class_hd95": hd95_vals
         })
 
     # aggregate
@@ -173,6 +178,8 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
         "mean_fg_dice": float(np.mean(mean_fg_dices)) if mean_fg_dices else 0.0,
         "per_class_dice_mean": [],
         "per_class_dice_std": [],
+        "per_class_hd95_mean": [],
+        "per_class_hd95_std": [],
         "prostate_dice_mean": float(np.mean(prostate_dice_list)) if prostate_dice_list else None,
         "prostate_dice_std": float(np.std(prostate_dice_list)) if prostate_dice_list else None,
         "hd95_mean": float(np.nanmean(hd95_list)) if hd95_list else None,
@@ -185,6 +192,11 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
         vals = vals[np.isfinite(vals)]
         agg["per_class_dice_mean"].append(float(np.mean(vals)) if vals.size else float("nan"))
         agg["per_class_dice_std"].append(float(np.std(vals)) if vals.size else float("nan"))
+
+    hd95_vals_c = np.array(per_class_hd95_accum[c], dtype=np.float64)
+    hd95_vals_c = hd95_vals_c[np.isfinite(hd95_vals_c)]
+    agg["per_class_hd95_mean"].append(float(np.mean(hd95_vals_c)) if hd95_vals_c.size else float("nan"))
+    agg["per_class_hd95_std"].append(float(np.std(hd95_vals_c)) if hd95_vals_c.size else float("nan"))
 
     if D is not None and hcost_expected_list:
         agg["hcost_expected_mean"] = float(np.mean(hcost_expected_list))

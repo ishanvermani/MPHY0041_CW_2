@@ -196,23 +196,25 @@ def cmd_display(args: argparse.Namespace):
 # Heatmap from saved H matrix
 # ---------------------------
 
-def load_h_conf(path: Path):
+def load_h_conf_any(path: Path, model: str | None = None, split: str | None = None, h_key: str = "h_conf"):
+	"""Load H from json or npy. Supports:
+	- npy: direct matrix
+	- json: direct {"h_conf": ...} or test metrics with flat/hier blocks, or list of epochs with train/val_h_conf
+	"""
 	if not path.exists():
 		raise FileNotFoundError(f"H confusion file not found: {path}")
 	if path.suffix.lower() == ".npy":
-		return np.load(path)
+		return np.load(path), model or path.stem
 	if path.suffix.lower() == ".json":
 		data = json.loads(path.read_text())
-		if isinstance(data, dict) and "h_conf" in data:
-			return np.array(data["h_conf"], dtype=float)
-		# allow direct list
-		return np.array(data, dtype=float)
+		H, title_suffix = hmap.extract_h_conf(data, model=model, split=split, h_key=h_key)
+		return np.array(H, dtype=float), title_suffix
 	raise ValueError(f"Unsupported H confusion format for {path}")
 
 
 def cmd_heatmap(args: argparse.Namespace):
-	H = load_h_conf(Path(args.h_conf))
-	hmap.plot_heatmap(H, Path(args.out), title=args.title, class_names=None)
+	H, title_suffix = load_h_conf_any(Path(args.metrics), model=args.model, split=args.split, h_key=args.h_key)
+	hmap.plot_heatmap(H, Path(args.out), title=args.title or f"H ({title_suffix})", class_names=args.class_names)
 	print(f"Saved heatmap to {args.out}")
 
 
@@ -261,10 +263,14 @@ def build_parser() -> argparse.ArgumentParser:
 	p_disp.set_defaults(func=cmd_display)
 
 	# heatmap
-	p_hmap = subs.add_parser("heatmap", help="Plot heatmap from saved hierarchical confusion matrix (JSON or NPY)")
-	p_hmap.add_argument("--h_conf", required=True, help="Path to saved H confusion (json with h_conf or npy array)")
+	p_hmap = subs.add_parser("heatmap", help="Plot heatmap from saved hierarchical confusion (json/npy or metrics with flat/hier)")
+	p_hmap.add_argument("--metrics", required=True, help="Path to metrics json/npy or saved h_conf file")
+	p_hmap.add_argument("--model", choices=["flat", "hier"], default="hier", help="Model block to use when metrics has flat/hier entries")
+	p_hmap.add_argument("--split", choices=["train", "val"], default=None, help="Only for legacy epoch-list metrics (train/val_h_conf)")
+	p_hmap.add_argument("--h_key", default="h_conf", help="Key name for confusion matrix")
 	p_hmap.add_argument("--out", default="h_conf.png", help="Output image path")
-	p_hmap.add_argument("--title", default="Hierarchical Confusion", help="Plot title")
+	p_hmap.add_argument("--title", default=None, help="Plot title (defaults to include model/suffix)")
+	p_hmap.add_argument("--class_names", nargs="*", default=None, help="Optional class names")
 	p_hmap.set_defaults(func=cmd_heatmap)
 
 	return parser

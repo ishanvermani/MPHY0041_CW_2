@@ -17,8 +17,9 @@ python inference.py display --image_nii path/to/img.nii.gz --mask_nii path/to/ma
 		--flat_ckpt data/preprocessed_data/best_flat.pt --hier_ckpt data/preprocessed_data/best_hier.pt \
 		--num_classes 9 --slices mid --out_dir prediction_masks
 
-# Heatmap
-python inference.py heatmap --h_conf metrics/h_conf_hier.json --out h_conf_hier.png --title "Hier H Conf (test)"
+# Heatmap (from test metrics json or saved h_conf)
+python inference.py heatmap --metrics metrics/test_metrics_with_hmat.json --model flat --out metrics/h_conf_flat.png --title "Flat H Conf (test)"
+python inference.py heatmap --metrics metrics/test_metrics_with_hmat.json --model hier --out metrics/h_conf_hier.png --title "Hier H Conf (test)"
 
 
 
@@ -43,7 +44,8 @@ python inference.py display --image_nii path/to/img.nii.gz --mask_nii path/to/ma
 		--num_classes 9 --slices mid --out_dir prediction_masks
 
 # Heatmap Visualization
-python inference.py heatmap --h_conf metrics/h_conf_hier.json --out h_conf_hier.png --title "Hier H Conf (test)"
+python inference.py heatmap --metrics metrics/test_metrics_with_hmat.json --model flat --out metrics/h_conf_flat.png --title "Flat H Conf (test)"
+python inference.py heatmap --metrics metrics/test_metrics_with_hmat.json --model hier --out metrics/h_conf_hier.png --title "Hier H Conf (test)"
 
 
 
