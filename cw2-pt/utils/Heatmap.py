@@ -1,11 +1,8 @@
 """Plot hierarchical confusion matrix H as a heatmap.
 
-Usage examples:
-  python Heatmap.py --metrics metrics/metrics.json --split val --out h_conf.png
-  python Heatmap.py --metrics metrics/metrics.json --split train --key val_super_dice
-
 By default it picks the entry with the highest `val_super_dice` (fallback to `val_dice`),
 pulls the chosen split's H (train_h_conf or val_h_conf), and plots it.
+
 """
 
 import argparse

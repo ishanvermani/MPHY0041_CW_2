@@ -39,7 +39,7 @@ from torch.utils.data import DataLoader
 from dataset import MalePelvicDataset, PatchDataset
 from src.model import UNet
 from src.losses import ce_loss, hierarchical_ce_loss, build_distance_matrix
-from src.benchmark import (
+from utils.benchmark import (
 	per_class_dice,
 	hd95_per_class,
 	hierarchy_confusion_fast,
@@ -108,7 +108,6 @@ def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=No
 	# per_class_dice_vals = None
 	# per_class_hd95_vals = None
 	super_dice_sum, super_dice_count = 0.0, 0
-	super_auc_sum, super_auc_count = 0.0, 0
 
 	for images, masks in loader:
 		images, masks = images.to(device), masks.to(device)
@@ -134,18 +133,14 @@ def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=No
 		# per_class_dice_vals = per_class_dice(preds, masks, num_classes)
 		# per_class_hd95_vals = hd95_per_class(preds, masks, num_classes)
 
-		super_dice, super_auc = prostate_superclass_metrics(logits.detach(), masks, num_classes)
+		super_dice = prostate_superclass_metrics(logits.detach(), masks, num_classes)
 		super_dice_sum += super_dice
 		super_dice_count += 1
-		if np.isfinite(super_auc):
-			super_auc_sum += super_auc
-			super_auc_count += 1
 
 	avg_loss = total_loss / max(1, total_px)
 	mean_dice = total_dice / max(1, dice_count)
 	avg_super_dice = super_dice_sum / max(1, super_dice_count)
-	avg_super_auc = super_auc_sum / max(1, super_auc_count)
-	return avg_loss, mean_dice, avg_super_dice, avg_super_auc
+	return avg_loss, mean_dice, avg_super_dice
 	#, avg_super_dice, avg_super_auc, per_class_dice_vals, per_class_hd95_vals, conf_H
 
 
@@ -157,7 +152,6 @@ def evaluate(model, loader, device, loss_fn, num_classes, D=None, alpha=None):
 	# per_class_dice_vals = None
 	# per_class_hd95_vals = None
 	super_dice_sum, super_dice_count = 0.0, 0
-	super_auc_sum, super_auc_count = 0.0, 0
 	with torch.no_grad():
 		for images, masks in loader:
 			images, masks = images.to(device), masks.to(device)
@@ -184,24 +178,20 @@ def evaluate(model, loader, device, loss_fn, num_classes, D=None, alpha=None):
 			# per_class_dice_vals = per_class_dice(preds, masks, num_classes)
 			# per_class_hd95_vals = hd95_per_class(preds, masks, num_classes)
 
-			super_dice, super_auc = prostate_superclass_metrics(logits, masks, num_classes)
+			super_dice = prostate_superclass_metrics(logits, masks, num_classes)
 			super_dice_sum += super_dice
 			super_dice_count += 1
-			if np.isfinite(super_auc):
-				super_auc_sum += super_auc
-				super_auc_count += 1
 
 	avg_loss = total_loss / max(1, total_px)
 	mean_dice = total_dice / max(1, dice_count)
 
 	avg_super_dice = super_dice_sum / max(1, super_dice_count)
-	avg_super_auc = super_auc_sum / max(1, super_auc_count)
-	
+
 	if D is not None:
 		mean_hcost = total_hcost / max(1, hcost_count)
-		return avg_loss, mean_dice, mean_hcost, avg_super_dice, avg_super_auc
+		return avg_loss, mean_dice, mean_hcost, avg_super_dice
 
-	return avg_loss, mean_dice, None, avg_super_dice, avg_super_auc
+	return avg_loss, mean_dice, None, avg_super_dice
 	#, avg_super_dice, avg_super_auc, per_class_dice_vals, per_class_hd95_vals, conf_H
 
 
@@ -271,8 +261,8 @@ def main():
 			json.dump(metrics, f, indent=2)
 		with open(metrics_csv, "w", newline="") as f:
 			writer = csv.DictWriter(f, fieldnames=[
-				"epoch", "train_loss", "train_dice", "train_super_dice", "train_super_auc",
-				"val_loss", "val_dice", "val_super_dice", "val_super_auc"
+				"epoch", "train_loss", "train_dice", "train_super_dice",
+				"val_loss", "val_dice", "val_super_dice"
 			], extrasaction="ignore")
 			writer.writeheader()
 			for row in metrics:
@@ -298,10 +288,10 @@ def main():
 			print(f"Training alpha {a} for {args.training_epochs} epochs")
 			for epoch in range(args.training_epochs):
 			
-				train_loss, train_dice, train_super_dice, train_super_auc = train_one_epoch(
+				train_loss, train_dice, train_super_dice = train_one_epoch(
 					model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, a if args.use_hierarchical_loss else None)
 			
-			val_loss, val_dice, val_hcost, val_super_dice, val_super_auc = evaluate(
+			val_loss, val_dice, val_hcost, val_super_dice = evaluate(
 			 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, a if args.use_hierarchical_loss else None)
 			dt = time.time() - t0
 
@@ -345,18 +335,18 @@ def main():
 			# 	model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
 			# val_loss, val_dice, val_super_dice, val_super_auc, val_dice_pc, val_hd95_pc, val_H = evaluate(
 			# 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
-			train_loss, train_dice, train_super_dice, train_super_auc = train_one_epoch(
+			train_loss, train_dice, train_super_dice = train_one_epoch(
 				model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, alpha if args.use_hierarchical_loss else None)
 			# val_loss, val_dice, val_super_dice, val_super_auc, val_dice_pc, val_hd95_pc, val_H = evaluate(
 			# 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
-			val_loss, val_dice, val_hcost, val_super_dice, val_super_auc = evaluate(
+			val_loss, val_dice, val_hcost, val_super_dice = evaluate(
 			 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, alpha if args.use_hierarchical_loss else None)
 
 			dt = time.time() - t0
 
 			print(f"Epoch {epoch:03d} | {dt:5.1f}s | "
-				  f"train loss {train_loss:.4f} dice {train_dice:.4f} superDice {train_super_dice:.4f} AUC {train_super_auc:.4f} | "
-				  f"val loss {val_loss:.4f} dice {val_dice:.4f} superDice {val_super_dice:.4f} AUC {val_super_auc:.4f}")
+				  f"train loss {train_loss:.4f} dice {train_dice:.4f} superDice {train_super_dice:.4f} | "
+				  f"val loss {val_loss:.4f} dice {val_dice:.4f} superDice {val_super_dice:.4f}")
 
 			# print(f"Epoch {epoch:03d} | {dt:5.1f}s | "
 			# 	f"train loss {train_loss:.4f} dice {train_dice:.4f} | "
@@ -368,12 +358,10 @@ def main():
 				"train_loss": train_loss,
 				"train_dice": train_dice,
 				"train_super_dice": train_super_dice,
-				"train_super_auc": train_super_auc,
 				"val_loss": val_loss,
 				"val_dice": val_dice,
 				"h_cost": val_hcost,
 				"val_super_dice": val_super_dice,
-				"val_super_auc": val_super_auc,
 				# "train_dice_per_class": train_dice_pc
 				# "val_dice_per_class": val_dice_pc,
 				# "train_hd95_per_class": train_hd95_pc,
@@ -391,7 +379,6 @@ def main():
 				torch.save({"model_state": model.state_dict(),
 						"epoch": epoch,
 						"val_super_dice": val_super_dice,
-						"val_super_auc": val_super_auc,
 						"val_dice": val_dice,
 						"val_loss": val_loss}, ckpt_path)
 				print(f"	   Saved checkpoint (best superDice) to {ckpt_path}")
@@ -403,7 +390,6 @@ def main():
 						"epoch": epoch,
 						"val_dice": val_dice,
 						"val_super_dice": val_super_dice,
-						"val_super_auc": val_super_auc,
 						"val_loss": val_loss}, dice_ckpt)
 				print(f"	   Saved checkpoint (best overall Dice) to {dice_ckpt}")
 	except KeyboardInterrupt:

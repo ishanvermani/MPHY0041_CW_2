@@ -1,26 +1,50 @@
 #!/bin/bash
 
 #############################################
-# Inference / evaluation shortcuts
+# Inference for Training Evaluation
 #############################################
 
-# Show best model dice, assuming best_model.pt exists
-python inference.py best-score --ckpt model_weights/best_model.pt
+# Show the best model's dice on different metrics
+python inference.py best-score --ckpt metrics/metrics_flat_super_dice.csv
 
-# Evaluate models (requires images/ and masks/ under data_dir)
-python inference.py eval --data_dir split_data/test \
-		--flat_ckpt model_weights/best_model_flat.pt \
-		--hier_ckpt model_weights/best_model_hier.pt \
-		--num_classes 9 --use_hierarchical_metrics \
-		--out_json test_metrics.json --out_csv test_metrics.csv
 
-# Plot Dice and Loss Curves
+
+# Plot Dice and Loss Curves for training process
 python inference.py plot --metrics_path data/preprocessed_data/metrics.csv --out plot.png
 
 # Run predictions and overlays
 python inference.py display --image_nii path/to/img.nii.gz --mask_nii path/to/mask.nii.gz \
 		--flat_ckpt data/preprocessed_data/best_flat.pt --hier_ckpt data/preprocessed_data/best_hier.pt \
 		--num_classes 9 --slices mid --out_dir prediction_masks
+
+# Heatmap
+python inference.py heatmap --h_conf metrics/h_conf_hier.json --out h_conf_hier.png --title "Hier H Conf (test)"
+
+
+
+#############################################
+# Inference for Test command
+#############################################
+
+# Run test evaluation on test set and store metrics
+python test.py \
+	--data_dir split_data/test \
+	--flat_ckpt model_weights/best_model_flat.pt \
+	--hier_ckpt model_weights/best_model_hier.pt \
+	--num_classes 9 \
+	--use_hierarchical_metrics \
+	--save_h_conf metrics/h_conf_{model}.json \
+	--out_json metrics/test_metrics.json \
+	--out_csv metrics/test_metrics.csv
+
+# Show NII predictions and overlays
+python inference.py display --image_nii path/to/img.nii.gz --mask_nii path/to/mask.nii.gz \
+		--flat_ckpt data/preprocessed_data/best_flat.pt --hier_ckpt data/preprocessed_data/best_hier.pt \
+		--num_classes 9 --slices mid --out_dir prediction_masks
+
+# Heatmap Visualization
+python inference.py heatmap --h_conf metrics/h_conf_hier.json --out h_conf_hier.png --title "Hier H Conf (test)"
+
 
 
 #############################################

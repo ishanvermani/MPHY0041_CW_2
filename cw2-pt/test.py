@@ -39,6 +39,7 @@ from utils.benchmark import (
     prostate_superclass_dice,
     hd95_per_class,
     expected_hier_cost_from_logits,
+    hierarchy_confusion_fast,
 )
 
 
@@ -97,7 +98,7 @@ def load_checkpoint(model: torch.nn.Module, ckpt_path: str, device: torch.device
 
 # ---------- Main ----------
 
-def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batch_slices=8):
+def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batch_slices=8, compute_h: bool = False):
     """
     Returns aggregated dict + per-case list
     """
@@ -109,6 +110,10 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
     hcost_expected_list = []
     prostate_dice_list = []
     hd95_list = []
+
+    H_accum = None
+    if compute_h and D is not None:
+        H_accum = torch.zeros((num_classes, num_classes), device=torch.device("cpu"))
 
 
     for batch in test_loader:
@@ -152,6 +157,9 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
             hcost_expected_list.append(h_exp)
             hd95_list.append(avg_hd95)
 
+            if H_accum is not None:
+                H_accum += hierarchy_confusion_fast(preds, mask, D)
+
         per_case.append({
             "mean_fg_dice": fg_d,
             "per_class_dice": pc,
@@ -184,6 +192,9 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
     else:
         agg["hcost_expected_mean"] = None
 
+    if H_accum is not None:
+        agg["h_conf"] = H_accum.cpu().numpy().tolist()
+
     return agg, per_case
 
 
@@ -197,6 +208,8 @@ def main():
     ap.add_argument("--batch_slices", type=int, default=8)
     ap.add_argument("--use_hierarchical_metrics", action="store_true",
                     help="If set, compute hierarchical costs using distance matrix D.")
+    ap.add_argument("--save_h_conf", type=str, default=None,
+                help="Optional path to save hierarchical confusion matrix (JSON or NPY). Use {model} to differentiate flat/hier.")
     ap.add_argument("--out_json", type=str, default="test_metrics.json")
     ap.add_argument("--out_csv", type=str, default="test_metrics.csv")
     args = ap.parse_args()
@@ -215,8 +228,24 @@ def main():
     hier_model = load_checkpoint(UNet(in_channels=1, num_classes=args.num_classes), args.hier_ckpt, device)
 
     # Evaluate
-    flat_agg, _ = evaluate_model_on_test(flat_model, test_loader, device, args.num_classes, D=D, batch_slices=args.batch_slices)
-    hier_agg, _ = evaluate_model_on_test(hier_model, test_loader, device, args.num_classes, D=D, batch_slices=args.batch_slices)
+    flat_agg, _ = evaluate_model_on_test(
+        flat_model,
+        test_loader,
+        device,
+        args.num_classes,
+        D=D,
+        batch_slices=args.batch_slices,
+        compute_h=bool(args.save_h_conf),
+    )
+    hier_agg, _ = evaluate_model_on_test(
+        hier_model,
+        test_loader,
+        device,
+        args.num_classes,
+        D=D,
+        batch_slices=args.batch_slices,
+        compute_h=bool(args.save_h_conf),
+    )
 
     results = {
         "flat": flat_agg,
@@ -235,12 +264,29 @@ def main():
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     with open(out_csv, "w", newline="") as f:
         writer = csv.writer(f)
-    writer.writerow(["model", "mean_fg_dice", "prostate_dice", "hcost_expected_mean"])
-    writer.writerow(["flat", flat_agg["mean_fg_dice"], flat_agg["prostate_dice_mean"],
-         flat_agg["hcost_expected_mean"]])
-    writer.writerow(["hier", hier_agg["mean_fg_dice"], hier_agg["prostate_dice_mean"],
-         hier_agg["hcost_expected_mean"]])
+        writer.writerow(["model", "mean_fg_dice", "prostate_dice", "hcost_expected_mean"])
+        writer.writerow(["flat", flat_agg["mean_fg_dice"], flat_agg["prostate_dice_mean"],
+             flat_agg["hcost_expected_mean"]])
+        writer.writerow(["hier", hier_agg["mean_fg_dice"], hier_agg["prostate_dice_mean"],
+             hier_agg["hcost_expected_mean"]])
     print(f"Saved CSV:  {out_csv}")
+
+    # Save hierarchical confusion (if requested and available)
+    if args.save_h_conf and D is not None:
+        h_path = Path(args.save_h_conf)
+        for name, agg in [("flat", flat_agg), ("hier", hier_agg)]:
+            if "h_conf" not in agg:
+                continue
+            if "{model}" in args.save_h_conf:
+                out_path = Path(args.save_h_conf.format(model=name))
+            else:
+                out_path = h_path.with_name(f"{h_path.stem}_{name}{h_path.suffix}")
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            if out_path.suffix.lower() == ".npy":
+                np.save(out_path, np.array(agg["h_conf"], dtype=float))
+            else:
+                out_path.write_text(json.dumps({"h_conf": agg["h_conf"]}, indent=2))
+            print(f"Saved H confusion for {name} to {out_path}")
 
     # Print quick summary
     print("\n=== TEST SUMMARY ===")
