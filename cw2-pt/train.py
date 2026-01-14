@@ -149,7 +149,7 @@ def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=No
 	#, avg_super_dice, avg_super_auc, per_class_dice_vals, per_class_hd95_vals, conf_H
 
 
-def evaluate(model, loader, device, loss_fn, num_classes, D=None):
+def evaluate(model, loader, device, loss_fn, num_classes, D=None, alpha=None):
 	model.eval()
 	total_loss, total_px, total_dice, dice_count = 0.0, 0, 0.0, 0
 	total_hcost, hcost_count = 0.0, 0 
@@ -163,7 +163,7 @@ def evaluate(model, loader, device, loss_fn, num_classes, D=None):
 			images, masks = images.to(device), masks.to(device)
 			images, masks = reshape_to_2d(images, masks)
 			logits = model(images)
-			loss = loss_fn(logits, masks)
+			loss = loss_fn(logits, masks, alpha)
 
 			total_loss += loss.item() * masks.numel()
 			preds = logits.argmax(dim=1)
@@ -196,7 +196,7 @@ def evaluate(model, loader, device, loss_fn, num_classes, D=None):
 
 	if D is not None:
 		mean_hcost = total_hcost / max(1, hcost_count)
-		return avg_loss, mean_dice, mean_hcost
+		return avg_loss, mean_dice, mean_hcost, avg_super_dice, avg_super_auc
 	avg_super_dice = super_dice_sum / max(1, super_dice_count)
 	avg_super_auc = super_auc_sum / max(1, super_auc_count)
 	return avg_loss, mean_dice, None, avg_super_dice, avg_super_auc
@@ -296,10 +296,10 @@ def main():
 			print(f"Training alpha {a} for {args.training_epochs} epochs")
 			for epoch in range(args.training_epochs):
 			
-				train_loss, train_dice = train_one_epoch(
+				train_loss, train_dice, train_super_dice, train_super_auc = train_one_epoch(
 					model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, a if args.use_hierarchical_loss else None)
 			
-			val_loss, val_dice, val_hcost = evaluate(
+			val_loss, val_dice, val_hcost, val_super_dice, val_super_auc = evaluate(
 			 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, a if args.use_hierarchical_loss else None)
 			dt = time.time() - t0
 
@@ -385,7 +385,7 @@ def main():
 
 			if val_super_dice > best_super:
 				best_super = val_super_dice
-				ckpt_path = data_root / "flat_super_dice_model.pt"
+				ckpt_path = data_root / "hier_super_dice_model.pt"
 				torch.save({"model_state": model.state_dict(),
 						"epoch": epoch,
 						"val_super_dice": val_super_dice,
@@ -396,7 +396,7 @@ def main():
 
 			if val_dice > best_val_dice:
 				best_val_dice = val_dice
-				dice_ckpt = data_root / "flat_dice_model.pt"
+				dice_ckpt = data_root / "hier_dice_model.pt"
 				torch.save({"model_state": model.state_dict(),
 						"epoch": epoch,
 						"val_dice": val_dice,

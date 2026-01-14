@@ -1,0 +1,114 @@
+Using provided alpha: None
+Starting training for 50 epochs on cuda…
+Epoch 001 | 193.6s | train loss 0.4256 dice 0.3927 superDice nan AUC 0.9233 | val loss 0.2964 dice 0.5812 superDice 0.6919 AUC 0.9879
+   Logged metrics to metrics.json and metrics.csv
+	   Saved checkpoint (best superDice) to data/preprocessed_data/flat_super_dice_model.pt
+	   Saved checkpoint (best overall Dice) to data/preprocessed_data/flat_dice_model.pt
+Epoch 002 | 185.6s | train loss 0.1890 dice 0.6826 superDice 0.7810 AUC 0.9941 | val loss 0.1748 dice 0.7058 superDice 0.7871 AUC 0.9947
+   Logged metrics to metrics.json and metrics.csv
+	   Saved checkpoint (best superDice) to data/preprocessed_data/flat_super_dice_model.pt
+	   Saved checkpoint (best overall Dice) to data/preprocessed_data/flat_dice_model.pt
+Epoch 003 | 187.5s | train loss 0.1590 dice 0.7221 superDice 0.8183 AUC 0.9962 | val loss 0.1627 dice 0.7000 superDice 0.7647 AUC 0.9953
+   Logged metrics to metrics.json and metrics.csv
+Epoch 004 | 187.4s | train loss 0.1431 dice 0.7445 superDice nan AUC 0.9972 | val loss 0.1630 dice 0.7213 superDice 0.7908 AUC 0.9942
+   Logged metrics to metrics.json and metrics.csv
+	   Saved checkpoint (best superDice) to data/preprocessed_data/flat_super_dice_model.pt
+	   Saved checkpoint (best overall Dice) to data/preprocessed_data/flat_dice_model.pt
+Epoch 005 | 185.9s | train loss 0.1314 dice 0.7623 superDice nan AUC 0.9977 | val loss 0.1489 dice 0.7356 superDice 0.8249 AUC 0.9963
+   Logged metrics to metrics.json and metrics.csv
+	   Saved checkpoint (best superDice) to data/preprocessed_data/flat_super_dice_model.pt
+	   Saved checkpoint (best overall Dice) to data/preprocessed_data/flat_dice_model.pt
+Epoch 006 | 185.8s | train loss 0.1249 dice 0.7720 superDice 0.8623 AUC 0.9981 | val loss 0.1544 dice 0.7397 superDice nan AUC 0.9955
+   Logged metrics to metrics.json and metrics.csv
+	   Saved checkpoint (best overall Dice) to data/preprocessed_data/flat_dice_model.pt
+Epoch 007 | 198.5s | train loss 0.1175 dice 0.7839 superDice nan AUC 0.9982 | val loss 0.1567 dice 0.7495 superDice 0.8100 AUC 0.9961
+   Logged metrics to metrics.json and metrics.csv
+	   Saved checkpoint (best overall Dice) to data/preprocessed_data/flat_dice_model.pt
+Epoch 008 | 185.2s | train loss 0.1140 dice 0.7921 superDice nan AUC 0.9985 | val loss 0.1495 dice 0.7476 superDice 0.8169 AUC 0.9961
+   Logged metrics to metrics.json and metrics.csv
+Epoch 009 | 188.3s | train loss 0.1088 dice 0.8000 superDice nan AUC 0.9988 | val loss 0.1609 dice 0.7370 superDice 0.7972 AUC 0.9959
+   Logged metrics to metrics.json and metrics.csv
+Epoch 010 | 197.4s | train loss 0.1040 dice 0.8074 superDice nan AUC 0.9988 | val loss 0.1757 dice 0.7274 superDice 0.8064 AUC 0.9940
+   Logged metrics to metrics.json and metrics.csv
+Epoch 011 | 192.4s | train loss 0.1004 dice 0.8127 superDice nan AUC 0.9987 | val loss 0.1632 dice 0.7452 superDice nan AUC 0.9944
+   Logged metrics to metrics.json and metrics.csv
+Epoch 012 | 186.8s | train loss 0.0982 dice 0.8168 superDice nan AUC 0.9988 | val loss 0.1643 dice 0.7416 superDice 0.8077 AUC 0.9950
+   Logged metrics to metrics.json and metrics.csv
+Epoch 013 | 188.3s | train loss 0.0961 dice 0.8219 superDice nan AUC 0.9990 | val loss 0.1646 dice 0.7449 superDice 0.8233 AUC 0.9956
+   Logged metrics to metrics.json and metrics.csv
+Epoch 014 | 192.2s | train loss 0.0937 dice 0.8248 superDice nan AUC 0.9990 | val loss 0.1662 dice 0.7414 superDice 0.8250 AUC 0.9953
+   Logged metrics to metrics.json and metrics.csv
+	   Saved checkpoint (best superDice) to data/preprocessed_data/flat_super_dice_model.pt
+Epoch 015 | 186.0s | train loss 0.0912 dice 0.8312 superDice nan AUC 0.9989 | val loss 0.1776 dice 0.7490 superDice 0.8113 AUC 0.9947
+   Logged metrics to metrics.json and metrics.csv
+Epoch 016 | 186.6s | train loss 0.0888 dice 0.8332 superDice nan AUC 0.9992 | val loss 0.1747 dice 0.7329 superDice 0.8088 AUC 0.9940
+   Logged metrics to metrics.json and metrics.csv
+Epoch 017 | 184.6s | train loss 0.0881 dice 0.8379 superDice nan AUC 0.9989 | val loss 0.1822 dice 0.7423 superDice nan AUC 0.9934
+   Logged metrics to metrics.json and metrics.csv
+Epoch 018 | 184.9s | train loss 0.0858 dice 0.8407 superDice nan AUC 0.9992 | val loss 0.1831 dice 0.7448 superDice 0.8036 AUC 0.9940
+   Logged metrics to metrics.json and metrics.csv
+Epoch 019 | 186.1s | train loss 0.0853 dice 0.8424 superDice nan AUC 0.9991 | val loss 0.1720 dice 0.7318 superDice 0.7982 AUC 0.9944
+   Logged metrics to metrics.json and metrics.csv
+Epoch 020 | 186.5s | train loss 0.0837 dice 0.8438 superDice nan AUC 0.9993 | val loss 0.1765 dice 0.7229 superDice 0.8085 AUC 0.9935
+   Logged metrics to metrics.json and metrics.csv
+Epoch 021 | 185.4s | train loss 0.0835 dice 0.8468 superDice nan AUC 0.9992 | val loss 0.1795 dice 0.7199 superDice 0.8076 AUC 0.9938
+   Logged metrics to metrics.json and metrics.csv
+Epoch 022 | 184.8s | train loss 0.0804 dice 0.8499 superDice nan AUC 0.9993 | val loss 0.1850 dice 0.7410 superDice 0.7979 AUC 0.9924
+   Logged metrics to metrics.json and metrics.csv
+Epoch 023 | 185.7s | train loss 0.0804 dice 0.8506 superDice nan AUC 0.9990 | val loss 0.1674 dice 0.7255 superDice 0.8194 AUC 0.9953
+   Logged metrics to metrics.json and metrics.csv
+Epoch 024 | 185.1s | train loss 0.0791 dice 0.8524 superDice nan AUC 0.9989 | val loss 0.1737 dice 0.7401 superDice 0.8115 AUC 0.9948
+   Logged metrics to metrics.json and metrics.csv
+Epoch 025 | 187.6s | train loss 0.0774 dice 0.8525 superDice nan AUC 0.9993 | val loss 0.1866 dice 0.7426 superDice 0.8100 AUC 0.9943
+   Logged metrics to metrics.json and metrics.csv
+Epoch 026 | 186.0s | train loss 0.0766 dice 0.8571 superDice nan AUC 0.9993 | val loss 0.2006 dice 0.7372 superDice 0.8029 AUC 0.9938
+   Logged metrics to metrics.json and metrics.csv
+Epoch 027 | 185.6s | train loss 0.0818 dice 0.8444 superDice nan AUC 0.9992 | val loss 0.1773 dice 0.7391 superDice 0.8048 AUC 0.9941
+   Logged metrics to metrics.json and metrics.csv
+Epoch 028 | 185.6s | train loss 0.0764 dice 0.8599 superDice nan AUC 0.9993 | val loss 0.1774 dice 0.7332 superDice 0.8152 AUC 0.9938
+   Logged metrics to metrics.json and metrics.csv
+Epoch 029 | 185.3s | train loss 0.0749 dice 0.8595 superDice nan AUC 0.9994 | val loss 0.1850 dice 0.7345 superDice 0.8080 AUC 0.9945
+   Logged metrics to metrics.json and metrics.csv
+Epoch 030 | 184.4s | train loss 0.0750 dice 0.8575 superDice nan AUC 0.9993 | val loss 0.1895 dice 0.7363 superDice 0.8078 AUC 0.9939
+   Logged metrics to metrics.json and metrics.csv
+Epoch 031 | 185.9s | train loss 0.0751 dice 0.8594 superDice nan AUC 0.9992 | val loss 0.1869 dice 0.7473 superDice 0.8154 AUC 0.9937
+   Logged metrics to metrics.json and metrics.csv
+Epoch 032 | 187.4s | train loss 0.0746 dice 0.8604 superDice nan AUC 0.9991 | val loss 0.1900 dice 0.7395 superDice 0.8056 AUC 0.9921
+   Logged metrics to metrics.json and metrics.csv
+Epoch 033 | 186.2s | train loss 0.0728 dice 0.8636 superDice nan AUC 0.9994 | val loss 0.1795 dice 0.7341 superDice 0.7945 AUC 0.9932
+   Logged metrics to metrics.json and metrics.csv
+Epoch 034 | 187.0s | train loss 0.0715 dice 0.8654 superDice nan AUC 0.9994 | val loss 0.1878 dice 0.7431 superDice 0.8278 AUC 0.9937
+   Logged metrics to metrics.json and metrics.csv
+	   Saved checkpoint (best superDice) to data/preprocessed_data/flat_super_dice_model.pt
+Epoch 035 | 185.4s | train loss 0.0716 dice 0.8652 superDice nan AUC 0.9993 | val loss 0.2024 dice 0.7278 superDice 0.7939 AUC 0.9921
+   Logged metrics to metrics.json and metrics.csv
+Epoch 036 | 185.1s | train loss 0.0723 dice 0.8629 superDice nan AUC 0.9994 | val loss 0.1836 dice 0.7406 superDice 0.8255 AUC 0.9937
+   Logged metrics to metrics.json and metrics.csv
+Epoch 037 | 185.0s | train loss 0.0707 dice 0.8671 superDice nan AUC 0.9994 | val loss 0.1950 dice 0.7312 superDice 0.8066 AUC 0.9934
+   Logged metrics to metrics.json and metrics.csv
+Epoch 038 | 189.6s | train loss 0.0701 dice 0.8688 superDice nan AUC 0.9992 | val loss 0.1819 dice 0.7418 superDice 0.8164 AUC 0.9924
+   Logged metrics to metrics.json and metrics.csv
+Epoch 039 | 185.3s | train loss 0.0695 dice 0.8684 superDice nan AUC 0.9995 | val loss 0.1902 dice 0.7313 superDice 0.8122 AUC 0.9932
+   Logged metrics to metrics.json and metrics.csv
+Epoch 040 | 185.3s | train loss 0.0706 dice 0.8686 superDice nan AUC 0.9992 | val loss 0.1943 dice 0.7294 superDice 0.8124 AUC 0.9919
+   Logged metrics to metrics.json and metrics.csv
+Epoch 041 | 189.8s | train loss 0.0688 dice 0.8712 superDice nan AUC 0.9995 | val loss 0.2073 dice 0.7311 superDice 0.8064 AUC 0.9930
+   Logged metrics to metrics.json and metrics.csv
+Epoch 042 | 188.3s | train loss 0.0678 dice 0.8740 superDice nan AUC 0.9994 | val loss 0.1942 dice 0.7341 superDice 0.8056 AUC 0.9939
+   Logged metrics to metrics.json and metrics.csv
+Epoch 043 | 185.0s | train loss 0.0675 dice 0.8722 superDice nan AUC 0.9995 | val loss 0.2004 dice 0.7325 superDice 0.8058 AUC 0.9927
+   Logged metrics to metrics.json and metrics.csv
+Epoch 044 | 187.2s | train loss 0.0677 dice 0.8727 superDice nan AUC 0.9994 | val loss 0.1965 dice 0.7447 superDice 0.8165 AUC 0.9935
+   Logged metrics to metrics.json and metrics.csv
+Epoch 045 | 185.8s | train loss 0.0698 dice 0.8694 superDice nan AUC 0.9993 | val loss 0.2160 dice 0.7357 superDice 0.8020 AUC 0.9927
+   Logged metrics to metrics.json and metrics.csv
+Epoch 046 | 184.9s | train loss 0.0668 dice 0.8716 superDice nan AUC 0.9996 | val loss 0.1937 dice 0.7185 superDice 0.7868 AUC 0.9899
+   Logged metrics to metrics.json and metrics.csv
+Epoch 047 | 184.4s | train loss 0.0674 dice 0.8714 superDice nan AUC 0.9994 | val loss 0.1907 dice 0.7308 superDice 0.8100 AUC 0.9932
+   Logged metrics to metrics.json and metrics.csv
+Epoch 048 | 187.2s | train loss 0.0661 dice 0.8751 superDice nan AUC 0.9992 | val loss 0.2033 dice 0.7286 superDice 0.7921 AUC 0.9928
+   Logged metrics to metrics.json and metrics.csv
+Epoch 049 | 199.5s | train loss 0.0654 dice 0.8739 superDice nan AUC 0.9992 | val loss 0.2286 dice 0.7324 superDice 0.8071 AUC 0.9908
+   Logged metrics to metrics.json and metrics.csv
+Epoch 050 | 193.2s | train loss 0.0675 dice 0.8733 superDice nan AUC 0.9995 | val loss 0.1970 dice 0.7394 superDice 0.8124 AUC 0.9905
+   Logged metrics to metrics.json and metrics.csv
