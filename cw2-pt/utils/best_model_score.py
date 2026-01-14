@@ -1,3 +1,8 @@
+"""
+# ###############################################################
+# Choose super_class Dice or general Dice to check best model score !
+# ###############################################################
+"""
 import torch
 
 # Path to your saved model
@@ -21,3 +26,4 @@ except FileNotFoundError:
     print("Could not find best_model.pt at that location.")
 except Exception as e:
     print(f"Error reading file: {e}")
+

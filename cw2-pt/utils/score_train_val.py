@@ -27,91 +27,18 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from dataset import MalePelvicDataset
 from src.model import UNet
 from src.losses import build_distance_matrix
-from src.benchmark import hd95_per_class
-
-
-# ---------- Metrics ----------
-
-def dice_per_class(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps: float = 1e-6):
-    """
-    preds, targets: [Z,Y,X] int
-    Returns: list length num_classes with dice (nan if class absent in both)
-    """
-    dices = []
-    for c in range(num_classes):
-        pred_c = (preds == c)
-        tgt_c = (targets == c)
-        denom = pred_c.sum() + tgt_c.sum()
-        if denom == 0:
-            dices.append(float("nan"))
-            continue
-        inter = (pred_c & tgt_c).sum()
-        dice = (2.0 * inter.float() + eps) / (denom.float() + eps)
-        dices.append(dice.item())
-    return dices
-
-
-def mean_foreground_dice(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps: float = 1e-6):
-    """
-    Mean dice across classes present in targets, ignoring background (class 0),
-    matching your training-time dice.
-    """
-    dice_sum, count = 0.0, 0
-    for c in range(1, num_classes):
-        pred_c = (preds == c)
-        tgt_c = (targets == c)
-        denom = pred_c.sum() + tgt_c.sum()
-        if denom == 0:
-            continue
-        inter = (pred_c & tgt_c).sum()
-        dice = (2.0 * inter.float() + eps) / (denom.float() + eps)
-        dice_sum += dice
-        count += 1
-    return (dice_sum / count).item() if count > 0 else 0.0
-
-def binary_dice(pred_bin: torch.Tensor, tgt_bin: torch.Tensor, eps: float = 1e-6) -> float:
-    inter = (pred_bin & tgt_bin).sum()
-    denom = pred_bin.sum() + tgt_bin.sum()
-    if denom == 0:
-        return 1.0  # both empty
-    return ((2.0 * inter.float() + eps) / (denom.float() + eps)).item()
-
-
-def prostate_superclass_dice(preds: torch.Tensor, targets: torch.Tensor, prostate_ids=(4, 5)) -> float:
-    pred_p = torch.zeros_like(preds, dtype=torch.bool)
-    tgt_p  = torch.zeros_like(targets, dtype=torch.bool)
-    for pid in prostate_ids:
-        pred_p |= (preds == pid)
-        tgt_p  |= (targets == pid)
-    return binary_dice(pred_p, tgt_p)
-
-
-@torch.no_grad()
-def mean_hier_cost_argmax(preds: torch.Tensor, targets: torch.Tensor, D: torch.Tensor) -> float:
-    """
-    preds, targets: [Z,Y,X] int
-    D: [C,C] where D[true,pred]
-    """
-    return D[targets, preds].float().mean().item()
-
-@torch.no_grad()
-def expected_hier_cost_from_logits(logits: torch.Tensor, targets: torch.Tensor, D: torch.Tensor) -> float:
-    """
-    logits: [N,C,H,W]
-    targets: [N,H,W]
-    D: [C,C] where D[true,pred]
-    returns mean expected cost over all pixels
-    """
-    probs = torch.softmax(logits, dim=1)              # [N,C,H,W]
-    D_row = D[targets]                               # [N,H,W,C]
-    exp_cost = (probs.permute(0,2,3,1) * D_row).sum(dim=-1)  # [N,H,W]
-    return exp_cost.mean().item()
+from utlis.benchmark import (
+    mean_foreground_dice,
+    dice_per_class,
+    prostate_superclass_dice,
+    hd95_per_class,
+    expected_hier_cost_from_logits,
+)
 
 
 # ---------- Inference (slice-wise over Z) ----------
@@ -167,7 +94,6 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
     # accumulators
     mean_fg_dices = []
     per_class_dice_accum = [[] for _ in range(num_classes)]
-    hcost_argmax_list = []
     hcost_expected_list = []
     prostate_dice_list = []
     hd95_list = []
@@ -205,21 +131,18 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
 
         # Hierarchical costs (optional)
         if D is not None:
-            h_arg = mean_hier_cost_argmax(preds, mask, D)
             # expected cost needs logits shaped [N,C,H,W] and targets [N,H,W]
             # Here N=Z (slices)
             logits = logits_cpu  # [Z,C,Y,X] on CPU
             targets = mask       # [Z,Y,X]
             h_exp = expected_hier_cost_from_logits(logits, targets, D)
 
-            hcost_argmax_list.append(h_arg)
             hcost_expected_list.append(h_exp)
             hd95_list.append(avg_hd95)
 
         per_case.append({
             "mean_fg_dice": fg_d,
             "per_class_dice": pc,
-            "hcost_argmax": hcost_argmax_list[-1] if D is not None else None,
             "hcost_expected": hcost_expected_list[-1] if D is not None else None,
             "prostate_dice": pros_d,
             "hd95_mean": avg_hd95
@@ -243,13 +166,10 @@ def evaluate_model_on_test(model, test_loader, device, num_classes, D=None, batc
         agg["per_class_dice_mean"].append(float(np.mean(vals)) if vals.size else float("nan"))
         agg["per_class_dice_std"].append(float(np.std(vals)) if vals.size else float("nan"))
 
-    if D is not None and hcost_argmax_list:
-        agg["hcost_argmax_mean"] = float(np.mean(hcost_argmax_list))
-        agg["hcost_argmax_std"] = float(np.std(hcost_argmax_list))
+    if D is not None and hcost_expected_list:
         agg["hcost_expected_mean"] = float(np.mean(hcost_expected_list))
         agg["hcost_expected_std"] = float(np.std(hcost_expected_list))
     else:
-        agg["hcost_argmax_mean"] = None
         agg["hcost_expected_mean"] = None
 
     return agg, per_case
@@ -303,11 +223,11 @@ def main():
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     with open(out_csv, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["model", "mean_fg_dice", "prostate_dice", "hcost_argmax_mean", "hcost_expected_mean"])
-        writer.writerow(["flat", flat_agg["mean_fg_dice"], flat_agg["prostate_dice_mean"],
-                 flat_agg["hcost_argmax_mean"], flat_agg["hcost_expected_mean"]])
-        writer.writerow(["hier", flat_agg["mean_fg_dice"], flat_agg["prostate_dice_mean"],
-                 flat_agg["hcost_argmax_mean"], flat_agg["hcost_expected_mean"]])
+    writer.writerow(["model", "mean_fg_dice", "prostate_dice", "hcost_expected_mean"])
+    writer.writerow(["flat", flat_agg["mean_fg_dice"], flat_agg["prostate_dice_mean"],
+         flat_agg["hcost_expected_mean"]])
+    writer.writerow(["hier", hier_agg["mean_fg_dice"], hier_agg["prostate_dice_mean"],
+         hier_agg["hcost_expected_mean"]])
     print(f"Saved CSV:  {out_csv}")
 
     # Print quick summary

@@ -26,10 +26,8 @@ def load_metrics(path: Path):
                 {
                     "epoch": int(row["epoch"]),
                     "train_loss": float(row["train_loss"]),
-                    # "train_acc": float(row["train_acc"]),
                     "train_dice": float(row["train_dice"]),
                     "val_loss": float(row["val_loss"]),
-                    # "val_acc": float(row["val_acc"]),
                     "val_dice": float(row["val_dice"]),
                 }
                 for row in reader

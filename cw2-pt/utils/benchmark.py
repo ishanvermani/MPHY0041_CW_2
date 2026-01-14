@@ -11,6 +11,67 @@ import torch
 from scipy.ndimage import binary_erosion, distance_transform_edt
 
 
+def dice_per_class(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps: float = 1e-6):
+	"""
+	3D volume per-class Dice. preds/targets: [Z,Y,X]; returns list length num_classes (nan if class absent).
+	"""
+	dices = []
+	for c in range(num_classes):
+		pred_c = (preds == c)
+		tgt_c = (targets == c)
+		denom = pred_c.sum() + tgt_c.sum()
+		if denom == 0:
+			dices.append(float("nan"))
+			continue
+		inter = (pred_c & tgt_c).sum()
+		dice = (2.0 * inter.float() + eps) / (denom.float() + eps)
+		dices.append(dice.item())
+	return dices
+
+
+def mean_foreground_dice(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps: float = 1e-6):
+	"""Mean Dice across present foreground classes (1..C-1), ignore background."""
+	dice_sum, count = 0.0, 0
+	for c in range(1, num_classes):
+		pred_c = (preds == c)
+		tgt_c = (targets == c)
+		denom = pred_c.sum() + tgt_c.sum()
+		if denom == 0:
+			continue
+		inter = (pred_c & tgt_c).sum()
+		dice = (2.0 * inter.float() + eps) / (denom.float() + eps)
+		dice_sum += dice
+		count += 1
+	return (dice_sum / count).item() if count > 0 else 0.0
+
+
+def binary_dice(pred_bin: torch.Tensor, tgt_bin: torch.Tensor, eps: float = 1e-6) -> float:
+	"""Binary Dice; returns 1.0 if both empty."""
+	inter = (pred_bin & tgt_bin).sum()
+	denom = pred_bin.sum() + tgt_bin.sum()
+	if denom == 0:
+		return 1.0
+	return ((2.0 * inter.float() + eps) / (denom.float() + eps)).item()
+
+
+def prostate_superclass_dice(preds: torch.Tensor, targets: torch.Tensor, prostate_ids=(4, 5)) -> float:
+	"""Merge specified prostate ids into one mask and compute binary Dice (prostate vs rest)."""
+	pred_p = torch.zeros_like(preds, dtype=torch.bool)
+	tgt_p = torch.zeros_like(targets, dtype=torch.bool)
+	for pid in prostate_ids:
+		pred_p |= (preds == pid)
+		tgt_p |= (targets == pid)
+	return binary_dice(pred_p, tgt_p)
+
+@torch.no_grad()
+def expected_hier_cost_from_logits(logits: torch.Tensor, targets: torch.Tensor, D: torch.Tensor) -> float:
+	"""Soft/expected hierarchical cost using softmax probabilities."""
+	probs = torch.softmax(logits, dim=1)              # [N,C,H,W]
+	D_row = D[targets]                                # [N,H,W,C]
+	exp_cost = (probs.permute(0, 2, 3, 1) * D_row).sum(dim=-1)  # [N,H,W]
+	return exp_cost.mean().item()
+
+
 def merge_prostate_superclass(preds: torch.Tensor, targets: torch.Tensor):
 	"""Return merged copies where prostate sub-classes 1/2 (index 4, 5) are mapped to 4.
 
@@ -103,30 +164,6 @@ def hierarchy_confusion_fast(preds: torch.Tensor, targets: torch.Tensor, D: torc
 	return H
 
 
-def binary_auc(scores: torch.Tensor, labels: torch.Tensor) -> float:
-	"""Compute ROC AUC for binary labels using torch ops. labels in {0,1}."""
-	labels = labels.float()
-	pos = labels.sum()
-	neg = labels.numel() - pos
-	if pos == 0 or neg == 0:
-		return float("nan")
-	# sort by score descending
-	scores, idx = torch.sort(scores, descending=True)
-	sorted_labels = labels[idx]
-	tps = torch.cumsum(sorted_labels, dim=0)
-	fps = torch.cumsum(1 - sorted_labels, dim=0)
-	# prepend (0,0)
-	tps = torch.cat([torch.zeros(1, device=tps.device), tps])
-	fps = torch.cat([torch.zeros(1, device=fps.device), fps])
-	# TPR/FPR
-	tpr = tps / pos
-	fpr = fps / neg
-	# trapezoidal rule
-	dfpr = fpr[1:] - fpr[:-1]
-	auc = torch.sum(dfpr * (tpr[1:] + tpr[:-1]) * 0.5)
-	return auc.item()
-
-
 def prostate_superclass_metrics(logits: torch.Tensor, targets: torch.Tensor, num_classes: int):
 	"""Compute merged-prostate Dice and AUC (prostate vs rest) without altering base preds.
 
@@ -136,11 +173,5 @@ def prostate_superclass_metrics(logits: torch.Tensor, targets: torch.Tensor, num
 	with torch.no_grad():
 		preds = logits.argmax(dim=1)
 		merged_pred, merged_tgt = merge_prostate_superclass(preds, targets)
-		prostate_dice = binary_dice(merged_pred == 4, merged_tgt == 4)
-
-		probs = torch.softmax(logits, dim=1)
-		prostate_score = probs[:, [4, 5]].sum(dim=1)
-		labels = (targets == 4) | (targets == 5)
-		prostate_auc = binary_auc(prostate_score.flatten(), labels.flatten())
-	return prostate_dice, prostate_auc
-
+		prostate_dice = binary_dice(merged_pred == 4, merged_tgt == 4)		
+	return prostate_dice
