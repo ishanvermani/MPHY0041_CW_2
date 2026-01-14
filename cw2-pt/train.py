@@ -196,7 +196,7 @@ def evaluate(model, loader, device, loss_fn, num_classes, D=None, alpha=None):
 
 	if D is not None:
 		mean_hcost = total_hcost / max(1, hcost_count)
-		return avg_loss, mean_dice, mean_hcost
+		return avg_loss, mean_dice, mean_hcost, avg_super_dice, avg_super_auc
 	avg_super_dice = super_dice_sum / max(1, super_dice_count)
 	avg_super_auc = super_auc_sum / max(1, super_auc_count)
 	return avg_loss, mean_dice, None, avg_super_dice, avg_super_auc
