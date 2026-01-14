@@ -32,7 +32,6 @@ def make_affine_like(old_affine, target_spacing_xyz):
 def preprocess_case(img_path, mask_path, out_image_path, out_mask_path):
     img_nib = nib.load(img_path)
     mask_nib = nib.load(mask_path)
-
     img = img_nib.get_fdata().astype(np.float32)
     mask = mask_nib.get_fdata().astype(np.float32)
 

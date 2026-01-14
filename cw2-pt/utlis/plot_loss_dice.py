@@ -1,9 +1,9 @@
-"""Visualize train/val Dice across epochs.
+"""Visualize train/val Dice and loss across epochs.
 
 Usage:
     python visualize.py --metrics_path data/preprocessed_data/metrics.csv --out plot.png
 
-The metrics file is produced by train.py (JSON or CSV with columns epoch, train_dice, val_dice).
+The metrics file is produced by train.py (JSON or CSV with columns epoch, train_loss, val_loss, train_dice, val_dice).
 """
 
 import argparse
@@ -43,14 +43,28 @@ def plot_dice(metrics, out_path: Path | None = None):
     train_dice = [m["train_dice"] for m in metrics]
     val_dice = [m["val_dice"] for m in metrics]
 
-    plt.figure(figsize=(8, 5))
-    plt.plot(epochs, train_dice, marker="o", label="Train Dice")
-    plt.plot(epochs, val_dice, marker="s", label="Val Dice")
-    plt.xlabel("Epoch")
-    plt.ylabel("Dice score")
-    plt.title("Dice vs Epoch")
-    plt.grid(True, linestyle="--", alpha=0.5)
-    plt.legend()
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+
+    # Loss subplot
+    train_loss = [m["train_loss"] for m in metrics]
+    val_loss = [m["val_loss"] for m in metrics]
+    axes[0].plot(epochs, train_loss, marker="o", label="Train loss")
+    axes[0].plot(epochs, val_loss, marker="s", label="Val loss")
+    axes[0].set_xlabel("Epoch")
+    axes[0].set_ylabel("Loss")
+    axes[0].set_title("Loss vs Epoch")
+    axes[0].grid(True, linestyle="--", alpha=0.5)
+    axes[0].legend()
+
+    # Dice subplot
+    axes[1].plot(epochs, train_dice, marker="o", label="Train Dice")
+    axes[1].plot(epochs, val_dice, marker="s", label="Val Dice")
+    axes[1].set_xlabel("Epoch")
+    axes[1].set_ylabel("Dice score")
+    axes[1].set_title("Dice vs Epoch")
+    axes[1].grid(True, linestyle="--", alpha=0.5)
+    axes[1].legend()
+
     plt.tight_layout()
 
     if out_path:
