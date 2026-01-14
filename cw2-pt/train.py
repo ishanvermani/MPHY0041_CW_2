@@ -194,11 +194,13 @@ def evaluate(model, loader, device, loss_fn, num_classes, D=None, alpha=None):
 	avg_loss = total_loss / max(1, total_px)
 	mean_dice = total_dice / max(1, dice_count)
 
+	avg_super_dice = super_dice_sum / max(1, super_dice_count)
+	avg_super_auc = super_auc_sum / max(1, super_auc_count)
+	
 	if D is not None:
 		mean_hcost = total_hcost / max(1, hcost_count)
 		return avg_loss, mean_dice, mean_hcost, avg_super_dice, avg_super_auc
-	avg_super_dice = super_dice_sum / max(1, super_dice_count)
-	avg_super_auc = super_auc_sum / max(1, super_auc_count)
+
 	return avg_loss, mean_dice, None, avg_super_dice, avg_super_auc
 	#, avg_super_dice, avg_super_auc, per_class_dice_vals, per_class_hd95_vals, conf_H
 
