@@ -32,7 +32,7 @@ from torch.utils.data import DataLoader
 from dataset import MalePelvicDataset
 from src.model import UNet
 from src.losses import build_distance_matrix
-from utlis.benchmark import (
+from utils.benchmark import (
     mean_foreground_dice,
     dice_per_class,
     prostate_superclass_dice,
