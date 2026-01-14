@@ -1,3 +1,5 @@
+
+
 1. Split data into training, validation and test set. Do this by writing the following command line function:
 
    python split_files.py --data_dir <path to data directory> --output_dir <path to output directory>
@@ -16,9 +18,24 @@
 
    python preprocess.py --input_dir <path to split data> --output_dir <path to preprocessed data>
 
-   Once this is done you can delete the split dataset 
+   Once this is done you can delete the split dataset to save disk space.
 
-3. For training, use the classes in dataset.py as such:
+   This is the expected directory structure:
+
+      preprocessed_data/
+                  train/
+                     images/
+                     masks/
+                  val/
+                     images/
+                     masks/
+                  test/
+                     images/
+                     masks/
+
+3. The training pipelines use 3D volumes but samples 2D slices from 3D.
+
+   For example, the dataset construction in train.py is as follows:
 
    from dataset import MalePelvicDataset, PatchDataset
 
@@ -31,6 +48,211 @@
       samples_per_volume=8,
    )
 
+   patch_size: is the 3D patch size (Z, Y, X)
+   foreground_prob: is the probability of sampling foreground voxels 
+   samples_per_volume: is the number of patches per volume per epoch 
+   
+4. To train a flat 2D UNet with cross entropy loss an example command line function is:
+
+   python train.py \
+   --data_dir data/preprocessed_data \
+   --epochs 10 \
+   --batch_size 1 \
+   --lr 1e-3 \
+   --num_classes 9 \
+   --samples_per_volume 8 \
+   --foreground_prob 0.8
+
+   This trains a 2D UNet on a 2D slices taken from 3D patches. 
+   
+   The Loss, Dice score, and AUC  are logged in a "metrics" file in csv and json format. 
+   
+   The checkpoints are saved in preprocessed_data/ as <name_of_checkpoint_file>.pt for best Dice and best superclass Dice.
+
+5. To use hierarchical cross entropy loss the above example command line becomes:
+
+   python train.py \
+   --data_dir data/preprocessed_data \
+   --use_hierarchical_loss 
+   --epochs 10 \
+   --training_epochs 5
+   --batch_size 1 \
+   --lr 1e-3 \
+   --num_classes 9 \
+   --samples_per_volume 8 \
+   --foreground_prob 0.8
+
+   Where use_hierarchical_loss enables hierarchical distance matrix penalties. 
+
+   The distance matrix, D for hierarchical ce loss was generated using the script centroid.py in utils which produced the matrix.txt file. The user can play around with this. 
+
+6. --training_epochs <number> enables hyperparameter tuning of alpha in losses.py. 
+
+   If the user wants to set a certain alpha, they can do so by adding the argument ----alpha <number for alpha>.
+
+   If --alpha is not provided but the user want's to trains the hierarchical model, the code performs automatic grid search. 
+
+   The best alpha is chosen based on validation dice and used for training. 
+
+7. The key arguments a user can modify in the training command are:
+
+      --data_dir                 path to preprocessed data root containing train/val splits
+      --patch_z/patch_y/patch_x  3D patch size (default 16*192*192)
+      --samples_per_volume       number of patches to sample per volume per epoch (default 8)
+      --foreground_prob          probability of sampling patches around foreground (default 0.8)
+      --num_classes              number of segmentation classes (masks clipped to 0..8, default 9)
+      --metrics_path             optional path prefix for saved metrics (json/csv)
+      --alpha					   	penalty hyperparam
+
+8. The test.py file is then used to evaluate full 3D volumes from the preprocessed test split using slice wise inference with a 2D UNet which is either flat or hierarchical. 
+   It comapres a flat checkpoint modle vs a hierarchical checkpoint model and outputs summary metrics.
+
+   An example usage of this command is shown below:
+
+   python test.py \
+   --data_dir data/preprocessed_data/test \
+   --flat_ckpt data/preprocessed_data/best_flat.pt \
+   --hier_ckpt data/preprocessed_data/best_hier.pt \
+   --num_classes 9 \
+   --use_hierarchical_metrics \
+   --out_csv results/test_metrics.csv \
+   --out_json results/test_metrics.json
+
+   The above command computes the mean forground dice, dice per class, mean prostate superclass dice (classes 4 and 5), mean HD95 and expexted hierarchical cost (only if --use_hierarchical_metrics is enabled). 
+
+   The --data_dir points to a split folder in the structure:
+
+   <data_dir>/
+      images/
+      masks/
+   
+   The --out_json saves a full summary for both models, including per-class dice means/stds and HD95 values.
+   The --out_csv is a compact CSV conrainint mean foreground dice, mean prostate dice and expected hierarchical cost, if computed.
+
+   If the user wants to save the hierarchical confusion matrix, both --use_hierarchical_metrics and --save_h_conf <path> must be set.
+
+   An example of this usage is given by:
+
+   python test.py \
+   --data_dir data/preprocessed_data/test \
+   --flat_ckpt data/preprocessed_data/best_flat.pt \
+   --hier_ckpt data/preprocessed_data/best_hier.pt \
+   --num_classes 9 \
+   --use_hierarchical_metrics \
+   --save_h_conf results/h_conf_{model}.npy \
+   --out_csv results/test_metrics.csv \
+   --out_json results/test_metrics.json
+
+   The {model} is replaced with flat or hier. If it is not included the script automatically appends it.
+
+   The key arguments a use can modify in the command are:
+
+   --data_dir : path to test split directory containing images/ and masks/
+   --flat_ckpt : flat model checkpoint (.pt)
+   --hier_ckpt : hierarchical model checkpoint (.pt)
+   --num_classes : number of classes (default 9)
+   --batch_slices : number of axial slices processed per forward pass (default 8).
+                    Increase for speed if GPU memory allows; decrease if you get OOM.
+   --use_hierarchical_metrics : enables expected hierarchical cost computation using distance matrix D
+   --save_h_conf : optional path to save hierarchical confusion matrix (requires --use_hierarchical_metrics)
+   --out_json / --out_csv : output paths for summary results
+
+9. inference.py acts as a single command-line entrypoint to multiple subcommands such as:
+
+   best-score: prints metadata (epoch/val loss and dice) from a saved checkpoint, or summarise best validation scores from a metrics CSV.
+   eval: runs a full-volume evaluation on a dataset (wraps test.py functions)
+   plot: plots loss/dice curves from training metrics CSV/json
+   display: runs prediction on a single nii image and exports predicted masks and overlayed pngs
+   heatmap: generates a heatmap from a saved hierarchical confusion matrix (npy or json as mentioned)
+
+   The general usage pattern is 
+
+   python inference.py <subcommand> [arguments for subcommand]
+
+   For each subcommand, the example usage and key args are described below:
+
+      best-score: 
+
+         python inference.py best-score --ckpt data/preprocessed_data/best_flat.pt
+      
+         This prints the stored epoch/val loss/val dice if the checkpoint contaisn those fields. If the file only contains model weights, the script prints no score.
+
+         python inference.py best-score --ckpt metrics/train_metrics.csv
+
+         This finds the best val dice and best val super class dice for the prostate.
+
+      eval:
+
+         python inference.py eval \
+         --data_dir data/preprocessed_data/test \
+         --flat_ckpt data/preprocessed_data/best_flat.pt \
+         --hier_ckpt data/preprocessed_data/best_hier.pt \
+         --num_classes 9 \
+         --use_hierarchical_metrics \
+         --out_json results/test_metrics.json \
+         --out_csv results/test_metrics.csv
+      
+         The --data_dir must be in the structure mentioned in 8.
+         --out_json summary metrics (mean dice, per-class dice stats, prostate dice, expected h-cost if enabled, etc.)
+         --out_csv compact 1-row-per-model summary
+      
+      plot:
+
+         python inference.py plot \
+         --metrics_path metrics/train_metrics.csv \
+         --out plots/training_curves.png
+
+         This will plot the loss and dice curves from a given --metrics_path file produced during training (csv or json)
+         It will be saved in the provided --out path.
+      
+      display:
+         The predicted models can be used to display the ground truth masks, flat model predicted masks and the hierarchical model predeicted masks on nii files 
+         using the display.py file. 
+
+         python display.py \
+         --image_nii data/preprocessed_data/val/images/case001_img.nii.gz \
+         --mask_nii  data/preprocessed_data/val/masks/case001_mask.nii.gz \
+         --flat_ckpt data/preprocessed_data/best_flat.pt \
+         --hier_ckpt data/preprocessed_data/best_hier.pt \
+         --num_classes 9 \
+         --slices "mid"
+
+         The key arguments a user can modify in the training command are:
+
+         --image_nii     path to a test or val .nii image 
+         --mask_nii      path to ground truth mask 
+         --fkat_ckpt     path to flat model weights
+         --hier_ckpt     path to hierarchical model weights 
+         --num_classes   number of segmentation classes (masks clipped to 0..8, default 9)
+         --slices        which axial slices to visualize 
+                        Options: "mid", "all", "10,20,30", "10:80:10"
+
+         This will save the predicted masks from both models and the png with the overlay in the default prediction_masks folder.
+
+         The user can edit output directory using the arguement --output_dir and providing a path to where they would like the images saved.
+
+      heatmap:
+
+         heatpmap expects that the user has generated and saved a hierarchical confusion matrix file in the form of .npy or .json.
+
+         python inference.py heatmap \
+         --h_conf results/h_conf_flat.npy \
+         --out plots/h_conf_flat.png \
+         --title "Hierarchical Confusion (Flat)"
+
+         Or for a JSON,
+
+         python inference.py heatmap \
+         --h_conf results/h_conf_hier.json \
+         --out plots/h_conf_hier.png
 
 
-had to pip install scipy and  
+NOTES:
+
+Must run from repository root so imports like dataset, src.model and utils.* resole correctly.
+User can run these step by step or use the job script created called all_sh_you_need_to_run in root directory on GPU.
+If you get a CUDA out of memory error during eval or display, reduce --batch_slices number. 
+
+
+Pip Installs:
+Had to pip install scipy
