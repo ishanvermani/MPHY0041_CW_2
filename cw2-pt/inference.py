@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader
 from dataset import MalePelvicDataset
 from src.model import UNet
 from src.losses import build_distance_matrix
-from utils import score_train_val as stv
+from utils import test as stv
 from utils import plot_loss_dice as pld
 from utils import display_nii as dspy
 
