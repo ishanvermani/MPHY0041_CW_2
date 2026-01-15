@@ -6,16 +6,7 @@ from scipy.spatial.distance import cdist
 from dataset import MalePelvicDataset
 
 def compute_centroids(mask, class_labels):
-    """
-    Compute centroids for each class in the mask.
-    
-    Args:
-        mask: 2D or 3D torch tensor (if 3D, uses middle Z slice)
-        class_labels: list of class label values (1-8)
-    
-    Returns:
-        dict: {class_label: (y, x) centroid coordinates}
-    """
+    """ Compute centroids for each class in the mask. """
     # If 3D (ZYX), take middle slice
     if mask.ndim == 3:
         mask = mask[mask.shape[0] // 2]
@@ -37,16 +28,7 @@ def compute_centroids(mask, class_labels):
     return centroids
 
 def process_masks(file_paths, class_labels=None):
-    """
-    Process all mask files and compute average centroid locations.
-    
-    Args:
-        file_paths: list of paths to .pt files containing masks
-        class_labels: list of class labels (default: 1-8)
-    
-    Returns:
-        tuple: (left_avg_centroids, right_avg_centroids)
-    """
+    """ Process all mask files and compute average centroid locations. """
     if class_labels is None:
         class_labels = list(range(1, 9))  # Classes 1-8
     
@@ -56,7 +38,6 @@ def process_masks(file_paths, class_labels=None):
     
     for i in range(dataset.len):
         # Load mask
-
         _, mask = dataset.__getitem__(i)
         
         # Handle 3D masks - take middle Z slice
@@ -101,16 +82,7 @@ def process_masks(file_paths, class_labels=None):
     return left_avg, right_avg
 
 def compute_distance_matrix(centroids, class_labels=None):
-    """
-    Compute pairwise distances between class centroids.
-    
-    Args:
-        centroids: dict of {class_label: (y, x) coordinates}
-        class_labels: list of class labels
-    
-    Returns:
-        numpy array: 8x8 distance matrix
-    """
+    """ Compute pairwise distances between class centroids. """
     if class_labels is None:
         class_labels = list(range(1, 9))
     
@@ -132,16 +104,12 @@ def compute_distance_matrix(centroids, class_labels=None):
     
     return dist_matrix
 
-# Main execution
 if __name__ == "__main__":
-    # Example usage
-    # Get list of mask files
+
     dataset = MalePelvicDataset("dataset/train")
 
     class_labels = list(range(1, 9))  # Classes 1-8
     
-    # Process all masks
-    print("Processing masks...")
     left_avg_centroids, right_avg_centroids = process_masks(dataset, class_labels)
     
     print("\nLeft half average centroids:")
@@ -152,8 +120,6 @@ if __name__ == "__main__":
     for label, centroid in right_avg_centroids.items():
         print(f"  Class {label}: {centroid}")
     
-    # Compute distance matrices
-    print("\nComputing distance matrices...")
     left_dist_matrix = compute_distance_matrix(left_avg_centroids, class_labels)
     right_dist_matrix = compute_distance_matrix(right_avg_centroids, class_labels)
     
@@ -163,13 +129,11 @@ if __name__ == "__main__":
     print("\nRight half distance matrix (8x8):")
     print(right_dist_matrix)
     
-    # Average of left and right distance matrices
     avg_dist_matrix = (left_dist_matrix + right_dist_matrix) / 2
     
     print("\nAverage distance matrix:")
     print(avg_dist_matrix)
     
-    # Round to nearest 10 and normalize
     avg_dist_matrix_rounded = np.round(avg_dist_matrix / 10) * 10
     min_val = np.nanmin(avg_dist_matrix_rounded)
     max_val = np.nanmax(avg_dist_matrix_rounded)

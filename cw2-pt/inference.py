@@ -1,12 +1,3 @@
-"""Unified inference/utility CLI.
-
-Subcommands:
-- best-score: print metadata from a saved checkpoint (epoch/val scores if present).
-- eval: run full-volume evaluation (wraps utlis/score_train_val.py).
-- plot: plot loss/dice curves from metrics CSV/JSON (wraps utlis/plot_loss_dice.py).
-- display: run prediction/overlay export (wraps utlis/display_nii.py).
-"""
-
 import argparse
 import json
 import csv
@@ -25,14 +16,12 @@ from utils import display_nii as dspy
 from utils import Heatmap as hmap
 
 
-# ---------------------------
-# best-score
-# ---------------------------
 
+# best-score
 def cmd_best_score(args: argparse.Namespace):
 	ckpt_path = Path(args.ckpt)
 
-	# If user passes a CSV, summarise best val_dice / val_super_dice
+	# If user passes a csv, summarise best val_dice / val_super_dice
 	if ckpt_path.suffix == ".csv":
 		if not ckpt_path.exists():
 			print(f"Could not find metrics CSV at {ckpt_path}")
@@ -86,11 +75,7 @@ def cmd_best_score(args: argparse.Namespace):
 	except Exception as e:
 		print(f"Error reading file: {e}")
 
-
-# ---------------------------------------------
 # Evaluate the model on train & validation sets
-# ---------------------------------------------
-
 def cmd_eval(args: argparse.Namespace):
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 	test_ds = MalePelvicDataset(args.data_dir)
@@ -112,10 +97,7 @@ def cmd_eval(args: argparse.Namespace):
 		hier_agg, hier_cases = stv.evaluate_model_on_test(hier_model, test_loader, device, args.num_classes, D=D, batch_slices=args.batch_slices)
 		results["hier"] = {"agg": hier_agg, "cases": hier_cases}
 
-	if not results:
-		raise RuntimeError("No checkpoints provided. Pass --flat_ckpt and/or --hier_ckpt.")
-
-	# Save JSON summary
+	# Save json summary
 	out_json = Path(args.out_json)
 	out_json.parent.mkdir(parents=True, exist_ok=True)
 	to_dump = {k: v["agg"] for k, v in results.items()}
@@ -123,7 +105,7 @@ def cmd_eval(args: argparse.Namespace):
 	out_json.write_text(json.dumps(to_dump, indent=2))
 	print(f"Saved JSON: {out_json}")
 
-	# Save CSV summary (one row per model)
+	# Save csv summary (one row per model)
 	out_csv = Path(args.out_csv)
 	out_csv.parent.mkdir(parents=True, exist_ok=True)
 	headers = ["model", "mean_fg_dice", "prostate_dice", "hcost_expected_mean"]
@@ -137,7 +119,6 @@ def cmd_eval(args: argparse.Namespace):
 		writer.writerows(rows)
 	print(f"Saved CSV:  {out_csv}")
 
-	# Console summary
 	print("\n=== Evaluation SUMMARY ===")
 	for name, obj in results.items():
 		agg = obj["agg"]
@@ -146,24 +127,14 @@ def cmd_eval(args: argparse.Namespace):
 			print(f"{name.capitalize()} expected h-cost:      {agg.get('hcost_expected_mean', float('nan')):.4f}")
 		print(f"{name.capitalize()} mean prostate Dice:        {agg.get('prostate_dice_mean', float('nan')):.4f}")
 
-
-# ---------------------------
 # Plot loss/dice curves
-# ---------------------------
-
 def cmd_plot(args: argparse.Namespace):
 	metrics_path = Path(args.metrics_path)
 	metrics = pld.load_metrics(metrics_path)
-	if len(metrics) == 0:
-		raise RuntimeError("Metrics file is empty—run training first.")
 	out_path = Path(args.out) if args.out else None
 	pld.plot_dice(metrics, out_path)
 
-
-# ---------------------------------
 # Display predictions on nii images
-# ---------------------------------
-
 def cmd_display(args: argparse.Namespace):
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 	out_dir = Path(args.out_dir)
@@ -191,51 +162,41 @@ def cmd_display(args: argparse.Namespace):
 	print(f"  {out_dir / 'pred_hier.nii.gz'}")
 	print(f"  {out_dir / 'png_overlays'}")
 
-
-# ---------------------------
 # Heatmap from saved H matrix
-# ---------------------------
-
 def load_h_conf_any(path: Path, model: str | None = None, split: str | None = None, h_key: str = "h_conf"):
-	"""Load H from json or npy. Supports:
+	"""
+	Load H from json or npy. Supports:
 	- npy: direct matrix
 	- json: direct {"h_conf": ...} or test metrics with flat/hier blocks, or list of epochs with train/val_h_conf
 	"""
 	if not path.exists():
-		raise FileNotFoundError(f"H confusion file not found: {path}")
+		print(f"H confusion file not found: {path}")
 	if path.suffix.lower() == ".npy":
 		return np.load(path), model or path.stem
 	if path.suffix.lower() == ".json":
 		data = json.loads(path.read_text())
 		H, title_suffix = hmap.extract_h_conf(data, model=model, split=split, h_key=h_key)
 		return np.array(H, dtype=float), title_suffix
-	raise ValueError(f"Unsupported H confusion format for {path}")
-
 
 def cmd_heatmap(args: argparse.Namespace):
 	H, title_suffix = load_h_conf_any(Path(args.metrics), model=args.model, split=args.split, h_key=args.h_key)
 	hmap.plot_heatmap(H, Path(args.out), title=args.title or f"H ({title_suffix})", class_names=args.class_names)
 	print(f"Saved heatmap to {args.out}")
 
-
-# ---------------------------
-# parser
-# ---------------------------
-
 def build_parser() -> argparse.ArgumentParser:
-	parser = argparse.ArgumentParser(description="Unified inference/utility entrypoint")
+	parser = argparse.ArgumentParser()
 	subs = parser.add_subparsers(dest="command", required=True)
 
 	# best-score
-	p_best = subs.add_parser("best-score", help="Print checkpoint epoch/loss/dice if stored")
-	p_best.add_argument("--ckpt", default="data/processed/best_model.pt", help="Path to checkpoint")
+	p_best = subs.add_parser("best-score")
+	p_best.add_argument("--ckpt", default="data/processed/best_model.pt")
 	p_best.set_defaults(func=cmd_best_score)
 
 	# eval
-	p_eval = subs.add_parser("eval", help="Evaluate checkpoints on a dataset (wraps score_train_val)")
-	p_eval.add_argument("--data_dir", required=True, help="Dir containing images/ and masks/")
-	p_eval.add_argument("--flat_ckpt", default=None, help="Path to flat model checkpoint")
-	p_eval.add_argument("--hier_ckpt", default=None, help="Path to hierarchical model checkpoint")
+	p_eval = subs.add_parser("eval")
+	p_eval.add_argument("--data_dir", required=True,)
+	p_eval.add_argument("--flat_ckpt", default=None)
+	p_eval.add_argument("--hier_ckpt", default=None)
 	p_eval.add_argument("--num_classes", type=int, default=9)
 	p_eval.add_argument("--batch_slices", type=int, default=8)
 	p_eval.add_argument("--use_hierarchical_metrics", action="store_true")
@@ -244,13 +205,13 @@ def build_parser() -> argparse.ArgumentParser:
 	p_eval.set_defaults(func=cmd_eval)
 
 	# plot
-	p_plot = subs.add_parser("plot", help="Plot loss/dice curves from metrics JSON/CSV")
-	p_plot.add_argument("--metrics_path", required=True, help="Path to metrics.json or metrics.csv")
-	p_plot.add_argument("--out", default=None, help="Optional output path for plot (png)")
+	p_plot = subs.add_parser("plot")
+	p_plot.add_argument("--metrics_path", required=True)
+	p_plot.add_argument("--out", default=None)
 	p_plot.set_defaults(func=cmd_plot)
 
 	# display
-	p_disp = subs.add_parser("display", help="Run prediction and overlay PNGs/NIfTI outputs")
+	p_disp = subs.add_parser("display")
 	p_disp.add_argument("--image_nii", required=True)
 	p_disp.add_argument("--flat_ckpt", required=True)
 	p_disp.add_argument("--hier_ckpt", required=True)
@@ -263,18 +224,17 @@ def build_parser() -> argparse.ArgumentParser:
 	p_disp.set_defaults(func=cmd_display)
 
 	# heatmap
-	p_hmap = subs.add_parser("heatmap", help="Plot heatmap from saved hierarchical confusion (json/npy or metrics with flat/hier)")
-	p_hmap.add_argument("--metrics", required=True, help="Path to metrics json/npy or saved h_conf file")
+	p_hmap = subs.add_parser("heatmap")
+	p_hmap.add_argument("--metrics", required=True)
 	p_hmap.add_argument("--model", choices=["flat", "hier"], default="hier", help="Model block to use when metrics has flat/hier entries")
 	p_hmap.add_argument("--split", choices=["train", "val"], default=None, help="Only for legacy epoch-list metrics (train/val_h_conf)")
-	p_hmap.add_argument("--h_key", default="h_conf", help="Key name for confusion matrix")
-	p_hmap.add_argument("--out", default="h_conf.png", help="Output image path")
-	p_hmap.add_argument("--title", default=None, help="Plot title (defaults to include model/suffix)")
-	p_hmap.add_argument("--class_names", nargs="*", default=None, help="Optional class names")
+	p_hmap.add_argument("--h_key", default="h_conf")
+	p_hmap.add_argument("--out", default="h_conf.png")
+	p_hmap.add_argument("--title", default=None)
+	p_hmap.add_argument("--class_names", nargs="*", default=None)
 	p_hmap.set_defaults(func=cmd_heatmap)
 
 	return parser
-
 
 def main():
 	parser = build_parser()

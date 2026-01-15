@@ -11,44 +11,18 @@ def split_nifti_files(data_dir: str,
                       val_ratio: float = 0.1,
                       test_ratio: float = 0.1,
                       random_seed: int = 42) -> Dict[str, List[Tuple[str, str]]]:
-    '''
-    
+    """
     This function finds all *_img.nii files and their corresponding *_mask.nii files,
     shuffles them randomly, and splits them into train/validation/test sets according
     to the specified ratios.
-    
-    Args:
-        data_dir: Path to directory containing *_img.nii and *_mask.nii files
-        output_dir: Path to output directory. If None, files are not copied.
-                    If provided, creates organised directory structure:
-                    output_dir/
-                      train/
-                        images/
-                        masks/
-                      val/
-                        images/
-                        masks/
-                      test/
-                        images/
-                        masks/
-        train_ratio: Proportion of data for training (default 0.8)
-        val_ratio: Proportion of data for validation (default 0.1)
-        test_ratio: Proportion of data for testing (default 0.1)
-        random_seed: Random seed for reproducibility (default 42)
-    
-    Returns:
-        Dictionary with keys 'train', 'val', 'test', each containing list of 
-        (img_path, mask_path) tuples. Paths are absolute strings.
-    
-    '''
+    """
+
     # Validate ratios
     assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6, \
         'Ratios must sum to 1.0'
     
-    # Set random seed
     random.seed(random_seed)
-    
-    # Get all image files
+
     data_path = Path(data_dir)
     img_files = sorted([f for f in data_path.glob('*_img.nii')])
     
@@ -63,14 +37,12 @@ def split_nifti_files(data_dir: str,
     
     print(f'Found {len(pairs)} image-mask pairs')
     
-    # Shuffle pairs
     random.shuffle(pairs)
     
     # Calculate split indices
     n_total = len(pairs)
     n_train = int(n_total * train_ratio)
     n_val = int(n_total * val_ratio)
-    # n_test = n_total - n_train - n_val (remaining)
     
     # Split pairs
     train_pairs = pairs[:n_train]
@@ -113,69 +85,16 @@ def split_nifti_files(data_dir: str,
     
     return splits
 
-
-
 def main():
-    '''Command-line interface for splitting NIfTI files.'''
-    parser = argparse.ArgumentParser(
-        description='Split NIfTI image-mask pairs into train/validation/test sets',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog='''
-        Example:
-          python data_proccessing.py --data_dir cw2-pt/data/data --output_dir cw2-pt/data/split_data
-        ''' 
-    )
-    
-    parser.add_argument(
-        '--data_dir',
-        type=str,
-        required=True,
-        help='Path to directory containing *_img.nii and *_mask.nii files'
-    )
-    
-    parser.add_argument(
-        '--output_dir',
-        type=str,
-        required=True,
-        help='Path to output directory. If not provided, files are not moved/copied'
-    )
-    
-    parser.add_argument(
-        '--train_ratio',
-        type=float,
-        default=0.8,
-        help='Proportion of data for training (default: 0.8)'
-    )
-    
-    parser.add_argument(
-        '--val_ratio',
-        type=float,
-        default=0.1,
-        help='Proportion of data for validation (default: 0.1)'
-    )
-    
-    parser.add_argument(
-        '--test_ratio',
-        type=float,
-        default=0.1,
-        help='Proportion of data for testing (default: 0.1)'
-    )
-    
-    parser.add_argument(
-        '--random_seed',
-        type=int,
-        default=42,
-        help='Random seed for reproducibility (default: 42)'
-    )
-       
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--data_dir', type=str, required=True)
+    parser.add_argument('--output_dir', type=str, required=True)
+    parser.add_argument('--train_ratio', type=float, default=0.8)
+    parser.add_argument('--val_ratio', type=float, default=0.1)
+    parser.add_argument('--test_ratio', type=float, default=0.1)
+    parser.add_argument('--random_seed', type=int, default=42)
     args = parser.parse_args()
-    
-    # Validate ratios sum to 1.0
-    total_ratio = args.train_ratio + args.val_ratio + args.test_ratio
-    if abs(total_ratio - 1.0) > 1e-6:
-        parser.error(f'Ratios must sum to 1.0, but got {total_ratio:.6f}')
-    
-    # Run the split
+
     splits = split_nifti_files(
         data_dir=args.data_dir,
         output_dir=args.output_dir,

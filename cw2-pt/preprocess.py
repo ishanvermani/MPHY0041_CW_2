@@ -12,6 +12,7 @@ def normalize(img):
     return (img - img.mean()) / (img.std() + 1e-8)
 
 def resample(vol_zyx, current_spacing, target_spacing, islabel):
+    """ Resamples a [Z,Y,X] volume to target spacing using linear interp for images and nearest for labels. """
     cx, cy, cz = current_spacing
     tx, ty, tz = target_spacing
     zoom_factors = (cz / tz, cy / ty, cx / tx)
@@ -19,9 +20,7 @@ def resample(vol_zyx, current_spacing, target_spacing, islabel):
     return zoom(vol_zyx, zoom=zoom_factors, order=order)
 
 def make_affine_like(old_affine, target_spacing_xyz):
-    """
-    Keep axis directions from old_affine but set voxel sizes to target spacing.
-    """
+    """ Keep axis directions from old_affine but set voxel sizes to target spacing. """
     aff = old_affine.copy()
     R = aff[:3, :3]
     # normalize columns to get directions, then scale by spacing
@@ -30,6 +29,7 @@ def make_affine_like(old_affine, target_spacing_xyz):
     return aff
 
 def preprocess_case(img_path, mask_path, out_image_path, out_mask_path):
+    """ Loads image/mask, resamples to TARGET_SPACING, normalizes image, updates affine, and saves outputs. """
     img_nib = nib.load(img_path)
     mask_nib = nib.load(mask_path)
 
@@ -55,6 +55,7 @@ def preprocess_case(img_path, mask_path, out_image_path, out_mask_path):
     nib.save(nib.Nifti1Image(mask_xyz, new_affine), out_mask_path)
 
 def image_file_to_mask_file(image_file):
+
     return image_file.replace("_img.nii.gz", "_mask.nii.gz").replace("_img.nii", "_mask.nii")
 
 def compress_to_gzip(file):
@@ -65,7 +66,7 @@ def compress_to_gzip(file):
     return file + ".nii.gz"
 
 def preprocess_split(split_dir, output_dir):
-    
+    """ Runs preprocessing for the standard dataset splits: train, val, and test. """
     input_image_dir = os.path.join(split_dir, "images")
     input_mask_dir = os.path.join(split_dir, "masks")
 

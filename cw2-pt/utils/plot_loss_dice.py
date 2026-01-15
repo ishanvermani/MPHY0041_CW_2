@@ -1,11 +1,3 @@
-"""Visualize train/val Dice and loss across epochs.
-
-Usage:
-    python visualize.py --metrics_path data/preprocessed_data/metrics.csv --out plot.png
-
-The metrics file is produced by train.py (JSON or CSV with columns epoch, train_loss, val_loss, train_dice, val_dice).
-"""
-
 import argparse
 import json
 from pathlib import Path
@@ -33,7 +25,7 @@ def load_metrics(path: Path):
                 for row in reader
             ]
     else:
-        raise ValueError(f"Unsupported metrics format: {path.suffix}")
+        print(f"Unsupported metrics format: {path.suffix}")
 
 
 def plot_dice(metrics, out_path: Path | None = None):
@@ -74,18 +66,14 @@ def plot_dice(metrics, out_path: Path | None = None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Plot Dice curves from metrics file")
-    parser.add_argument("--metrics_path", type=str, required=True,
-                        help="Path to metrics.json or metrics.csv produced by train.py")
-    parser.add_argument("--out", type=str, default=None,
-                        help="Optional path to save the plot (e.g., plot.png). If omitted, shows interactively.")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--metrics_path", type=str, required=True)
+    parser.add_argument("--out", type=str, default=None)
     args = parser.parse_args()
 
     metrics_path = Path(args.metrics_path)
     metrics = load_metrics(metrics_path)
-    if len(metrics) == 0:
-        raise RuntimeError("Metrics file is empty—run training first.")
-
+    
     out_path = Path(args.out) if args.out else None
     plot_dice(metrics, out_path)
 

@@ -1,9 +1,3 @@
-"""Evaluation utilities: per-class Dice, per-class HD95, hierarchical confusion.
-
-These functions are imported by train.py to keep training loop slim.
-Requires scipy for HD95.
-"""
-
 from __future__ import annotations
 
 import numpy as np
@@ -13,7 +7,9 @@ from scipy.ndimage import binary_erosion, distance_transform_edt
 
 def dice_per_class(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps: float = 1e-6):
 	"""
-	3D volume per-class Dice. preds/targets: [Z,Y,X]; returns list length num_classes (nan if class absent).
+	3D volume per-class Dice. preds/targets: [Z,Y,X]; 
+	
+	returns list length num_classes (nan if class absent).
 	"""
 	dices = []
 	for c in range(num_classes):
@@ -30,7 +26,7 @@ def dice_per_class(preds: torch.Tensor, targets: torch.Tensor, num_classes: int,
 
 
 def mean_foreground_dice(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps: float = 1e-6):
-	"""Mean Dice across present foreground classes (1..C-1), ignore background."""
+	""" Mean Dice across present foreground classes (1..C-1), ignore background. """
 	dice_sum, count = 0.0, 0
 	for c in range(1, num_classes):
 		pred_c = (preds == c)
@@ -46,7 +42,7 @@ def mean_foreground_dice(preds: torch.Tensor, targets: torch.Tensor, num_classes
 
 
 def binary_dice(pred_bin: torch.Tensor, tgt_bin: torch.Tensor, eps: float = 1e-6) -> float:
-	"""Binary Dice; returns 1.0 if both empty."""
+	""" Binary Dice; returns 1.0 if both empty. """
 	inter = (pred_bin & tgt_bin).sum()
 	denom = pred_bin.sum() + tgt_bin.sum()
 	if denom == 0:
@@ -55,7 +51,7 @@ def binary_dice(pred_bin: torch.Tensor, tgt_bin: torch.Tensor, eps: float = 1e-6
 
 
 def prostate_superclass_dice(preds: torch.Tensor, targets: torch.Tensor, prostate_ids=(4, 5)) -> float:
-	"""Merge specified prostate ids into one mask and compute binary Dice (prostate vs rest)."""
+	""" Merge specified prostate ids into one mask and compute binary Dice (prostate vs rest). """
 	pred_p = torch.zeros_like(preds, dtype=torch.bool)
 	tgt_p = torch.zeros_like(targets, dtype=torch.bool)
 	for pid in prostate_ids:
@@ -65,15 +61,16 @@ def prostate_superclass_dice(preds: torch.Tensor, targets: torch.Tensor, prostat
 
 @torch.no_grad()
 def expected_hier_cost_from_logits(logits: torch.Tensor, targets: torch.Tensor, D: torch.Tensor) -> float:
-	"""Soft/expected hierarchical cost using softmax probabilities."""
-	probs = torch.softmax(logits, dim=1)              # [N,C,H,W]
-	D_row = D[targets]                                # [N,H,W,C]
-	exp_cost = (probs.permute(0, 2, 3, 1) * D_row).sum(dim=-1)  # [N,H,W]
+	""" Soft/expected hierarchical cost using softmax probabilities. """
+	probs = torch.softmax(logits, dim=1)
+	D_row = D[targets]
+	exp_cost = (probs.permute(0, 2, 3, 1) * D_row).sum(dim=-1)
 	return exp_cost.mean().item()
 
 
 def merge_prostate_superclass(preds: torch.Tensor, targets: torch.Tensor):
-	"""Return merged copies where prostate sub-classes 1/2 (index 4, 5) are mapped to 4.
+	"""
+	Return merged copies where prostate sub-classes 1/2 (index 4, 5) are mapped to 4.
 
 	Background stays 0; other classes remain unchanged. Shapes preserved.
 	"""
@@ -86,7 +83,7 @@ def merge_prostate_superclass(preds: torch.Tensor, targets: torch.Tensor):
 
 
 def binary_dice(pred_mask: torch.Tensor, tgt_mask: torch.Tensor, eps: float = 1e-6) -> float:
-	"""Dice for binary masks (bool/int)."""
+	""" Dice for binary masks (bool/int). """
 	inter = (pred_mask & tgt_mask).sum().float()
 	denom = pred_mask.sum().float() + tgt_mask.sum().float()
 	if denom == 0:
@@ -95,7 +92,7 @@ def binary_dice(pred_mask: torch.Tensor, tgt_mask: torch.Tensor, eps: float = 1e
 
 
 def per_class_dice(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps: float = 1e-6):
-	"""Return list of Dice per class; classes absent in both pred/target get nan."""
+	""" Return list of Dice per class; classes absent in both pred/target get nan. """
 	res = []
 	for c in range(num_classes):
 		pred_c = (preds == c)
@@ -111,7 +108,8 @@ def per_class_dice(preds: torch.Tensor, targets: torch.Tensor, num_classes: int,
 
 
 def hd95_single(pred_mask: np.ndarray, tgt_mask: np.ndarray, spacing=(1.0, 1.0)):
-	"""Symmetric 95th percentile Hausdorff distance for binary masks.
+	"""
+	Symmetric 95th percentile Hausdorff distance for binary masks.
 
 	Returns nan if both empty; inf if only one is empty.
 	"""
@@ -134,7 +132,7 @@ def hd95_single(pred_mask: np.ndarray, tgt_mask: np.ndarray, spacing=(1.0, 1.0))
 
 
 def hd95_per_class(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, spacing=(1.0, 1.0)):
-	"""Compute per-class HD95 over stacked batch of 2D slices."""
+	""" Compute per-class HD95 over stacked batch of 2D slices. """
 	res = []
 	p_np = preds.detach().cpu().numpy()
 	t_np = targets.detach().cpu().numpy()
@@ -154,7 +152,7 @@ def hd95_per_class(preds: torch.Tensor, targets: torch.Tensor, num_classes: int,
 	return res
 
 def hierarchy_confusion_fast(preds: torch.Tensor, targets: torch.Tensor, D: torch.Tensor):
-	"""Weighted confusion accumulation using distance matrix D (rows=true, cols=pred)."""
+	""" Weighted confusion accumulation using distance matrix D (rows=true, cols=pred). """
 	num_classes = D.shape[0]
 	preds = preds.flatten()
 	targets = targets.flatten()
@@ -165,11 +163,7 @@ def hierarchy_confusion_fast(preds: torch.Tensor, targets: torch.Tensor, D: torc
 
 
 def prostate_superclass_metrics(logits: torch.Tensor, targets: torch.Tensor, num_classes: int):
-	"""Compute merged-prostate Dice and AUC (prostate vs rest) without altering base preds.
-
-	- Dice uses argmax preds merged (4/5 -> 4) and class-1 Dice.
-	- AUC uses softmax probs; positive when target in {4, 5}.
-	"""
+	""" Compute merged-prostate Dice and AUC (prostate vs rest) without altering base preds. """
 	with torch.no_grad():
 		preds = logits.argmax(dim=1)
 		merged_pred, merged_tgt = merge_prostate_superclass(preds, targets)

@@ -1,31 +1,3 @@
-"""
-Training script for 2D U-Net pelvic segmentation (patch-based from 3D volumes).
-
-Quick start (CPU / CUDA):
-	python train.py \
-		--data_dir data/preprocessed_data \
-		--epochs 10 \
-		--training_epochs 5 \
-		--alpha 10 \
-		--batch_size 1 \
-		--lr 1e-3 \
-		--num_classes 9 \
-		--samples_per_volume 8 \
-		--foreground_prob 0.8
-
-Use hierarchical loss (now supports 9-class distance matrix):
-	python train.py --data_dir data/preprocessed_data --use_hierarchical_loss --num_classes 9
-
-Key args:
-	--data_dir                 path to preprocessed data root containing train/val splits
-	--patch_z/patch_y/patch_x  3D patch size (default 16*192*192)
-	--samples_per_volume       number of patches to sample per volume per epoch (default 8)
-	--foreground_prob          probability of sampling patches around foreground (default 0.8)
-	--num_classes              number of segmentation classes (masks clipped to 0..8, default 9)
-	--metrics_path             optional path prefix for saved metrics (json/csv)
-	--alpha						penalty hyperparam
-"""
-
 import argparse
 import csv
 import json
@@ -77,14 +49,20 @@ def reshape_to_2d(images, masks):
 	return images, masks
 
 def expected_hierarchical_cost(logits: torch.Tensor, targets: torch.Tensor, D: torch.Tensor) -> float:
+	""" Computes the mean expected hierarchical misclassification cost using softmax probs and a class-distance matrix D. """
 	probs = torch.softmax(logits, dim=1)
+
+	# Select the cost row corresponding to the true class
 	D_row = D[targets]
+
+	# Expected cost per pixel
 	e_cost = (probs.permute(0,2,3,1) * D_row).sum(dim=-1)
+
 	return e_cost.mean().item()
 
 
 def dice_score(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps: float = 1e-6) -> float:
-	"""Compute mean Dice across classes present in targets."""
+	""" Compute mean Dice across classes present in targets. """
 	dice_sum, count = 0.0, 0
 	for c in range(1, num_classes): # Ignore background when calculating dice score 
 		pred_c = (preds == c)
@@ -102,11 +80,9 @@ def dice_score(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps
 
 
 def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=None, alpha=None):
+	 """ Runs one training epoch and returns average loss, mean Dice, and superclass Dice. """
 	model.train()
 	total_loss, total_px, total_dice, dice_count = 0.0, 0, 0.0, 0
-	# conf_H = torch.zeros((num_classes, num_classes), device=device)
-	# per_class_dice_vals = None
-	# per_class_hd95_vals = None
 	super_dice_sum, super_dice_count = 0.0, 0
 
 	for images, masks in loader:
@@ -123,16 +99,12 @@ def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=No
 		preds = logits.argmax(dim=1)
 		total_px += masks.numel()
 
+		# Dice on predicted labels
 		dice = dice_score(preds.detach(), masks, num_classes)
 		total_dice += dice
 		dice_count += 1
 
-		# if D is not None:
-		# 	conf_H += hierarchy_confusion_fast(preds, masks, D)
-
-		# per_class_dice_vals = per_class_dice(preds, masks, num_classes)
-		# per_class_hd95_vals = hd95_per_class(preds, masks, num_classes)
-
+		# Prostate superclass dice
 		super_dice = prostate_superclass_metrics(logits.detach(), masks, num_classes)
 		super_dice_sum += super_dice
 		super_dice_count += 1
@@ -141,17 +113,14 @@ def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=No
 	mean_dice = total_dice / max(1, dice_count)
 	avg_super_dice = super_dice_sum / max(1, super_dice_count)
 	return avg_loss, mean_dice, avg_super_dice
-	#, avg_super_dice, avg_super_auc, per_class_dice_vals, per_class_hd95_vals, conf_H
-
 
 def evaluate(model, loader, device, loss_fn, num_classes, D=None, alpha=None):
+	 """ Evaluates the model and returns loss, Dice, hierarchical cost (optional), and superclass Dice. """
 	model.eval()
 	total_loss, total_px, total_dice, dice_count = 0.0, 0, 0.0, 0
 	total_hcost, hcost_count = 0.0, 0 
-	# conf_H = torch.zeros((num_classes, num_classes), device=device)
-	# per_class_dice_vals = None
-	# per_class_hd95_vals = None
 	super_dice_sum, super_dice_count = 0.0, 0
+	
 	with torch.no_grad():
 		for images, masks in loader:
 			images, masks = images.to(device), masks.to(device)
@@ -163,21 +132,18 @@ def evaluate(model, loader, device, loss_fn, num_classes, D=None, alpha=None):
 			preds = logits.argmax(dim=1)
 			total_px += masks.numel()
 
+ 			# Compute hierarchical expected cost if enabled
 			if D is not None:
 				h_cost = expected_hierarchical_cost(logits, masks, D)
 				total_hcost += h_cost
 				hcost_count += 1
 
+			# Dice on predicted labels
 			dice = dice_score(preds, masks, num_classes)
 			total_dice += dice
 			dice_count += 1
 
-			# if D is not None:
-			# 	conf_H += hierarchy_confusion_fast(preds, masks, D)
-
-			# per_class_dice_vals = per_class_dice(preds, masks, num_classes)
-			# per_class_hd95_vals = hd95_per_class(preds, masks, num_classes)
-
+			# Prostate superclass dice
 			super_dice = prostate_superclass_metrics(logits, masks, num_classes)
 			super_dice_sum += super_dice
 			super_dice_count += 1
@@ -192,32 +158,24 @@ def evaluate(model, loader, device, loss_fn, num_classes, D=None, alpha=None):
 		return avg_loss, mean_dice, mean_hcost, avg_super_dice
 
 	return avg_loss, mean_dice, None, avg_super_dice
-	#, avg_super_dice, avg_super_auc, per_class_dice_vals, per_class_hd95_vals, conf_H
-
 
 def main():
-	parser = argparse.ArgumentParser(description="Minimal training script for pelvic U-Net")
-	parser.add_argument("--data_dir", type=str, required=True,
-						help="Path to preprocessed data root containing train/val splits")
+	parser = argparse.ArgumentParser()
+	parser.add_argument("--data_dir", type=str, required=True)
 	parser.add_argument("--epochs", type=int, default=10)
 	parser.add_argument("--training_epochs", type=int, default=1)
 	parser.add_argument("--alpha", type=int, default=None)
 	parser.add_argument("--batch_size", type=int, default=1)
 	parser.add_argument("--lr", type=float, default=1e-3)
 	parser.add_argument("--num_workers", type=int, default=4)
-	parser.add_argument("--num_classes", type=int, default=9,
-						help="Number of segmentation classes (mask labels are clipped to 0..8 in dataset)")
-	parser.add_argument("--use_hierarchical_loss", action="store_true",
-						help="Use anatomy-aware hierarchical cross-entropy")
-	parser.add_argument("--samples_per_volume", type=int, default=8,
-						help="Patches sampled per volume per epoch")
-	parser.add_argument("--foreground_prob", type=float, default=0.8,
-						help="Probability to center patch on foreground")
+	parser.add_argument("--num_classes", type=int, default=9)
+	parser.add_argument("--use_hierarchical_loss", action="store_true", help="Use anatomy-aware hierarchical cross-entropy")
+	parser.add_argument("--samples_per_volume", type=int, default=8)
+	parser.add_argument("--foreground_prob", type=float, default=0.8)
 	parser.add_argument("--patch_z", type=int, default=16)
 	parser.add_argument("--patch_y", type=int, default=192)
 	parser.add_argument("--patch_x", type=int, default=192)
-	parser.add_argument("--metrics_path", type=str, default=None,
-						help="Optional path prefix for saving per-epoch metrics (default: data_dir/metrics.json & .csv)")
+	parser.add_argument("--metrics_path", type=str, default=None)
 	args = parser.parse_args()
 
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -235,10 +193,12 @@ def main():
 
 	model = UNet(in_channels=1, num_classes=args.num_classes).to(device)
 
+	# Choose loss function
 	if args.use_hierarchical_loss:
 		D = build_distance_matrix(args.num_classes, device)
 
 		def loss_fn(logits, targets, alpha):
+			# Clamp invalid labels to valid class range
 			if targets.max() >= args.num_classes:
 				targets = targets.clamp_max(args.num_classes - 1)
 			return hierarchical_ce_loss(logits, targets, D, alpha)
@@ -271,7 +231,7 @@ def main():
 	
 	training_val_dice = []
 
-	
+	# Alpha grid search if hierarchical loss is used 
 	if args.use_hierarchical_loss and args.alpha is None:
 
 		print(f"Starting hyperparam training for {args.training_epochs} epochs on {device}…")
@@ -290,7 +250,8 @@ def main():
 			
 				train_loss, train_dice, train_super_dice = train_one_epoch(
 					model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, a if args.use_hierarchical_loss else None)
-			
+
+			# Evaluate alpha candidate
 			val_loss, val_dice, val_hcost, val_super_dice = evaluate(
 			 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, a if args.use_hierarchical_loss else None)
 			dt = time.time() - t0
@@ -300,6 +261,7 @@ def main():
 			
 			training_val_dice.append(val_dice)
 
+		# Select best alpha
 		alpha = alpha_gridsearch[np.argmax(training_val_dice)]
 
 		print(f"Selected alpha: {alpha}")
@@ -308,37 +270,19 @@ def main():
 
 	else:
 		alpha = args.alpha
-
 		print(f"Using provided alpha: {alpha}")
 
-	# def save_metrics():
-	# 	metrics_json.parent.mkdir(parents=True, exist_ok=True)
-	# 	with open(metrics_json, "w") as f:
-	# 		json.dump(metrics, f, indent=2)
-	# 	with open(metrics_csv, "w", newline="") as f:
-	# 		writer = csv.DictWriter(f, fieldnames=[
-	# 			"epoch", "train_loss", "train_dice",
-	# 			"val_loss", "val_dice", "h_cost"
-	# 		], extrasaction="ignore")
-	# 		writer.writeheader()
-	# 		for row in metrics:
-	# 			writer.writerow(row)
-	# 	return metrics_json, metrics_csv
-
+	# Full training loop 
 	print(f"Starting training for {args.epochs} epochs on {device}…")
 	best_super = -float("inf")
 	best_val_dice = -float("inf")
 	try:
 		for epoch in range(1, args.epochs + 1):
 			t0 = time.time()
-			# train_loss, train_dice, train_super_dice, train_super_auc, train_dice_pc, train_hd95_pc, train_H = train_one_epoch(
-			# 	model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
-			# val_loss, val_dice, val_super_dice, val_super_auc, val_dice_pc, val_hd95_pc, val_H = evaluate(
-			# 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
+
 			train_loss, train_dice, train_super_dice = train_one_epoch(
 				model, train_loader, optimizer, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, alpha if args.use_hierarchical_loss else None)
-			# val_loss, val_dice, val_super_dice, val_super_auc, val_dice_pc, val_hd95_pc, val_H = evaluate(
-			# 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None)
+
 			val_loss, val_dice, val_hcost, val_super_dice = evaluate(
 			 	model, val_loader, device, loss_fn, args.num_classes, D if args.use_hierarchical_loss else None, alpha if args.use_hierarchical_loss else None)
 
@@ -348,11 +292,6 @@ def main():
 				  f"train loss {train_loss:.4f} dice {train_dice:.4f} superDice {train_super_dice:.4f} | "
 				  f"val loss {val_loss:.4f} dice {val_dice:.4f} superDice {val_super_dice:.4f}")
 
-			# print(f"Epoch {epoch:03d} | {dt:5.1f}s | "
-			# 	f"train loss {train_loss:.4f} dice {train_dice:.4f} | "
-			# 	f"val loss {val_loss:.4f} dice {val_dice:.4f} | "
-			# 	f"expected hierarchical cost {val_hcost:.4f}")
-
 			metrics.append({
 				"epoch": epoch,
 				"train_loss": train_loss,
@@ -361,21 +300,16 @@ def main():
 				"val_loss": val_loss,
 				"val_dice": val_dice,
 				"h_cost": val_hcost,
-				"val_super_dice": val_super_dice,
-				# "train_dice_per_class": train_dice_pc
-				# "val_dice_per_class": val_dice_pc,
-				# "train_hd95_per_class": train_hd95_pc,
-				# "val_hd95_per_class": val_hd95_pc,
-				# "train_h_conf": train_H.tolist() if args.use_hierarchical_loss else None,
-				# "val_h_conf": val_H.tolist() if args.use_hierarchical_loss else None,
+				"val_super_dice": val_super_dice
 			})
 
 			mj, mc = save_metrics()
 			print(f"   Logged metrics to {mj} and {mc}")
 
+			# Save best model by superclass dice
 			if val_super_dice > best_super:
 				best_super = val_super_dice
-				ckpt_path = data_root / "hier_super_dice_model.pt"
+				ckpt_path = data_root / "best_super_dice_model.pt"
 				torch.save({"model_state": model.state_dict(),
 						"epoch": epoch,
 						"val_super_dice": val_super_dice,
@@ -383,9 +317,10 @@ def main():
 						"val_loss": val_loss}, ckpt_path)
 				print(f"	   Saved checkpoint (best superDice) to {ckpt_path}")
 
+			# Save best model by overall dice
 			if val_dice > best_val_dice:
 				best_val_dice = val_dice
-				dice_ckpt = data_root / "hier_dice_model.pt"
+				dice_ckpt = data_root / "best_dice_model.pt"
 				torch.save({"model_state": model.state_dict(),
 						"epoch": epoch,
 						"val_dice": val_dice,

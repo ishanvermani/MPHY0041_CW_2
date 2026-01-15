@@ -1,12 +1,3 @@
-"""Plot hierarchical confusion matrix H as a heatmap.
-
-For test outputs you typically have either:
-- a file with top-level keys {"flat": {..., "h_conf": [...]}, "hier": {..., "h_conf": [...]}}
-- or a single dict {"h_conf": [...]} (as saved by test.py when using --save_h_conf)
-
-This script now loads H directly without any "best epoch" selection.
-"""
-
 import argparse
 import json
 from pathlib import Path
@@ -21,7 +12,8 @@ def load_metrics(path: Path):
 
 
 def extract_h_conf(data, model: str | None = None, split: str | None = None, h_key: str = "h_conf"):
-	"""Return (H, title_suffix).
+	"""
+	Return (H, title_suffix).
 
 	Handles three cases:
 	1) dict with top-level h_conf
@@ -42,13 +34,13 @@ def extract_h_conf(data, model: str | None = None, split: str | None = None, h_k
 	# case 3: legacy training metrics list
 	if isinstance(data, list):
 		if not split:
-			raise ValueError("split must be provided when metrics is a list of epochs")
+			print("split must be provided when metrics is a list of epochs")
 		key = f"{split}_h_conf"
 		for m in reversed(data):
 			if key in m:
 				return m[key], m.get("epoch", "?")
 
-	raise ValueError("Could not find h_conf in provided metrics")
+	print("Could not find h_conf in provided metrics")
 
 
 def plot_heatmap(H: np.ndarray, out: Path, title: str = "Hierarchical Confusion", class_names=None):
@@ -67,21 +59,17 @@ def plot_heatmap(H: np.ndarray, out: Path, title: str = "Hierarchical Confusion"
 	plt.savefig(out, dpi=200)
 	plt.close()
 
-
 def main():
-	parser = argparse.ArgumentParser(description="Plot hierarchical confusion H as heatmap")
-	parser.add_argument("--metrics", type=Path, required=True, help="Path to metrics or h_conf json/npy")
-	parser.add_argument("--model", choices=["flat", "hier"], default="hier",
-				help="Which model block to read when metrics has flat/hier entries (ignored for direct h_conf file)")
+	parser = argparse.ArgumentParser()
+	parser.add_argument("--metrics", type=Path, required=True)
+	parser.add_argument("--model", choices=["flat", "hier"], default="hier")
 	parser.add_argument("--split", choices=["train", "val"], default=None,
 				help="Only needed for legacy training metrics list; ignored for test-style files")
-	parser.add_argument("--h_key", type=str, default="h_conf", help="Key name containing the confusion matrix")
-	parser.add_argument("--out", type=Path, default=Path("h_conf.png"), help="Output image path")
-	parser.add_argument("--class_names", type=str, nargs="*", default=None,
-				help="Optional class names for axes (order must match matrix)")
+	parser.add_argument("--h_key", type=str, default="h_conf")
+	parser.add_argument("--out", type=Path, default=Path("h_conf.png"))
+	parser.add_argument("--class_names", type=str, nargs="*", default=None)
 	args = parser.parse_args()
 
-	# load file (json or npy)
 	if args.metrics.suffix.lower() == ".npy":
 		H = np.load(args.metrics)
 		title_suffix = args.model
@@ -92,7 +80,6 @@ def main():
 
 	plot_heatmap(H, args.out, title=f"H ({title_suffix})", class_names=args.class_names)
 	print(f"Saved heatmap to {args.out}")
-
 
 if __name__ == "__main__":
 	main()

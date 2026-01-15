@@ -2,7 +2,15 @@ import torch
 import torch.nn.functional as F
 
 def build_distance_matrix(num_classes: int, device: torch.device)-> torch.Tensor:
+    """
+    Builds and returns a [C,C] matrix D where D[true, pred] is the penalty weight
+    we use the number of classes to structure the matrix and define its dimensions.
+    row index corresponds to the true class, column index to the predicted class.
+    the values in the cells represent the penalty based on the distance between classes.
 
+    the matrix represents the anatomy knowledge of the organs turned into numbers
+    """
+    
     D = torch.tensor([
         [0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00], # 0. background
         [0.00, 0.00, 0.91, 0.64, 0.45, 0.45, 0.82, 0.64, 0.55], # 1. Bladder
@@ -21,7 +29,7 @@ def build_distance_matrix(num_classes: int, device: torch.device)-> torch.Tensor
     return D
 
 def ce_loss(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-
+    """ Computes the standard cross-entropy loss between logits and targets. """
     return F.cross_entropy(logits, targets)
 
 def hierarchical_ce_loss(
@@ -32,9 +40,10 @@ def hierarchical_ce_loss(
         epsilon: float = 1e-8
     ) -> torch.Tensor:
 
-    # cross entropy loss per pixel without avearaging
+    """ Computes the hierarchical cross-entropy loss between logits and targets using distance matrix D. """
+    # cross entropy loss per pixel wihtput avearaging
     ce = F.cross_entropy(logits, targets, reduction='none')  
-
+    
     # predict class probabilities per pixel given the logits
     preds = logits.argmax(dim=1)
 

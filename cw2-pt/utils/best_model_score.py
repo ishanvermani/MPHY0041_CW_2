@@ -1,8 +1,3 @@
-"""
-# ###############################################################
-# Choose super_class Dice or general Dice to check best model score !
-# ###############################################################
-"""
 import csv
 from pathlib import Path
 
@@ -11,7 +6,6 @@ import torch
 
 MODEL_PATH = "data/processed/best_model.pt"
 CSV_PATH = "metrics/metrics_flat_super_dice.csv"
-
 
 def print_ckpt_metadata(path: str = MODEL_PATH):
     try:
