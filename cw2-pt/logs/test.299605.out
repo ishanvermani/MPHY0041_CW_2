@@ -1,0 +1,12 @@
+Saved JSON: test_metrics.json
+Saved CSV:  test_metrics.csv
+Saved H confusion for flat to metrics/h_conf_flat.npy
+Saved H confusion for hier to metrics/h_conf_hier.npy
+
+=== TEST SUMMARY ===
+Flat mean foreground Dice: 0.7618
+Hier mean foreground Dice: 0.7653
+Flat expected h-cost:      0.0005
+Hier expected h-cost:      0.0006
+Flat prostate Dice:        0.8316
+Hier prostate Dice:        0.8375
