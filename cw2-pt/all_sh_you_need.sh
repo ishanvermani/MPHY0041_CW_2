@@ -7,8 +7,6 @@
 # Show the best model's dice on different metrics
 python inference.py best-score --ckpt metrics/metrics_flat_super_dice.csv
 
-
-
 # Plot Dice and Loss Curves for training process
 python inference.py plot --metrics_path data/preprocessed_data/metrics.csv --out plot.png
 
@@ -20,8 +18,6 @@ python inference.py display --image_nii path/to/img.nii.gz --mask_nii path/to/ma
 # Heatmap (from test metrics json or saved h_conf)
 python inference.py heatmap --metrics metrics/test_metrics_with_hmat.json --model flat --out metrics/h_conf_flat.png --title "Flat H Conf (test)"
 python inference.py heatmap --metrics metrics/test_metrics_with_hmat.json --model hier --out metrics/h_conf_hier.png --title "Hier H Conf (test)"
-
-
 
 #############################################
 # Inference for Test command
@@ -46,8 +42,6 @@ python inference.py display --image_nii path/to/img.nii.gz --mask_nii path/to/ma
 # Heatmap Visualization
 python inference.py heatmap --metrics metrics/test_metrics_with_hmat.json --model flat --out metrics/h_conf_flat.png --title "Flat H Conf (test)"
 python inference.py heatmap --metrics metrics/test_metrics_with_hmat.json --model hier --out metrics/h_conf_hier.png --title "Hier H Conf (test)"
-
-
 
 #############################################
 # Train flat U-Net on GPU (SGE job script)
