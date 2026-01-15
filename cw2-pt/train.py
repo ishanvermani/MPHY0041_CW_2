@@ -80,7 +80,7 @@ def dice_score(preds: torch.Tensor, targets: torch.Tensor, num_classes: int, eps
 
 
 def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=None, alpha=None):
-	 """ Runs one training epoch and returns average loss, mean Dice, and superclass Dice. """
+	""" Runs one training epoch and returns average loss, mean Dice, and superclass Dice. """
 	model.train()
 	total_loss, total_px, total_dice, dice_count = 0.0, 0, 0.0, 0
 	super_dice_sum, super_dice_count = 0.0, 0
@@ -115,7 +115,7 @@ def train_one_epoch(model, loader, optimizer, device, loss_fn, num_classes, D=No
 	return avg_loss, mean_dice, avg_super_dice
 
 def evaluate(model, loader, device, loss_fn, num_classes, D=None, alpha=None):
-	 """ Evaluates the model and returns loss, Dice, hierarchical cost (optional), and superclass Dice. """
+	""" Evaluates the model and returns loss, Dice, hierarchical cost (optional), and superclass Dice. """
 	model.eval()
 	total_loss, total_px, total_dice, dice_count = 0.0, 0, 0.0, 0
 	total_hcost, hcost_count = 0.0, 0 

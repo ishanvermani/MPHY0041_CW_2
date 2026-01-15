@@ -113,7 +113,7 @@ def overlay_pngs(img_zyx, pred_flat_zyx, pred_hier_zyx, gt_zyx, out_dir: Path, s
 
 
 def parse_slices(spec: str, Z: int):
-     """ Parses a slice specification string into a list of valid Z indices. """
+    """ Parses a slice specification string into a list of valid Z indices. """
     spec = spec.strip().lower()
     if spec == "mid":
         return [Z // 2]
